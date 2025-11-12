@@ -1,4 +1,4 @@
-package com.aurora.climatesync.view;
+package com.aurora.climatesync;
 
 import com.aurora.climatesync.model.Location;
 import com.aurora.climatesync.model.WeatherForecast;
