@@ -23,19 +23,19 @@ public class CalendarEvent {
     }
 
     public String getSummary() {
-        return summary;
+        return title;
     }
 
     public String getDescription() {
         return description;
     }
 
-    public ZonedDateTime getStartTime() {
+     public ZonedDateTime getStartTime() {
         return startTime;
     }
 
-    public ZonedDateTime getStartTime() {
-        return startTime;
+    public ZonedDateTime getEndTime() {
+        return endTime;
     }
 
     public Location getEventLocation() {

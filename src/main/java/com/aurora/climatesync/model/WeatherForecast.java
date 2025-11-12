@@ -1,12 +1,12 @@
 package com.aurora.climatesync.model;
 
-import java.time.localDate;
+import java.time.LocalDate;
 
 public class WeatherForecast {
 
     private LocalDate date;
-    private double maxTemperature;
-    private double minTemperature;
+    private double maxTempareture;
+    private double minTempareture;
     private String condition;
     private double precipitationChance;
     private double windSpeed;
@@ -15,14 +15,14 @@ public class WeatherForecast {
     // Constructors
     public WeatherForecast(LocalDate date, double maxTemperature, double minTemperature, String condition, double precipitationChance, double windSpeed, Location location) {
         this.date = date;
-        this.maxTemperature = maxTemperature;
-        this.minTemperature = minTemperature;
+        this.maxTempareture = maxTemperature;
+        this.minTempareture = minTemperature;
         this.condition = condition;
         this.precipitationChance = precipitationChance;
         this.windSpeed = windSpeed;
         this.location = location;
     }
-}
+
 
     // Getters
     public LocalDate getDate() {
@@ -64,3 +64,4 @@ public class WeatherForecast {
         return String.format("%s | %s | High: %.1fºC | Low: %.1fºC | Precipitation: %d%% (%s) | Wind: %.1f km/h",
                 date, condition, maxTempareture, minTempareture, rainLikely, rainStatus, windSpeed);
     }
+}
