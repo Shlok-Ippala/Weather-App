@@ -60,8 +60,41 @@ public class WeatherForecast {
     @Override
     public String toString() {
         int rainLikely = (int) (precipitationChance * 100);
-        String rainStatus = isRainLikely() ? "rain likely 🌧️" : "not rain likely ⛅️";
+        /* String rainStatus = isRainLikely() ? "rain likely 🌧️" : "not rain likely ⛅️";
         return String.format("%s | %s | High: %.1fºC | Low: %.1fºC | Precipitation: %d%% (%s) | Wind: %.1f km/h",
-                date, condition, maxTempareture, minTempareture, rainLikely, rainStatus, windSpeed);
+                date, condition, maxTempareture, minTempareture, rainLikely, rainStatus, windSpeed); */
+        String icon;
+        switch (condition.toLowerCase()) {
+            case "rainy":
+                icon = "🌧️";
+                break;
+            case "sunny":
+                icon = "☀️";
+                break;
+            case "cloudy":
+                icon = "☁️";
+                break;
+            case "windy":
+                icon = "💨";
+                break;
+            case "snow":
+                icon = "🌨️";
+                break;
+            default:
+                icon = "⛅️";
+        }
+
+        String rainStatus = isRainLikely() ? "rain likely 🌧️" : "not rain likely ⛅️";
+        return String.format(
+                "%s %ns\n" +
+                "Condition          : %s %s\n" +
+                "High / Low         : %.1fºC / %.1fºC\n" +
+                "Precipitation      : %d%% (%s)\n" +
+                "Wind Speed         : %.1f km/h",
+                date, icon, condition,
+                maxTempareture, minTempareture,
+                rainLikely, rainStatus, windSpeed
+
+        );
     }
 }
