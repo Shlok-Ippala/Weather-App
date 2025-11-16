@@ -14,7 +14,7 @@ public class Main {
 
         try{
             for (int i = 0; i < 3; i++){
-              Thread.sleep(500);
+              Thread.sleep(1000);
               System.out.println(".");
             }
         }
