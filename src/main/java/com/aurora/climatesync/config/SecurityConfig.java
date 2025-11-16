@@ -19,7 +19,9 @@ public class SecurityConfig {
                         .requestMatchers("/events").authenticated()
                         .anyRequest().permitAll()
                 )
-                .oauth2Login(Customizer.withDefaults());
+                .oauth2Login(oauth -> oauth
+                        .defaultSuccessUrl("/events", true)
+                );
 
         return http.build();
     }
