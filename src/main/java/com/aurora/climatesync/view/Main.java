@@ -4,7 +4,7 @@ import com.aurora.climatesync.model.Location;
 import com.aurora.climatesync.model.WeatherForecast;
 import com.aurora.climatesync.service.WeatherService;
 
-import java.util.List;
+import java.util.*;
 
 public class Main {
 
