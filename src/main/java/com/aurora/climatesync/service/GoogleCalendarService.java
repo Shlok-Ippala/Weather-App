@@ -1,5 +1,7 @@
 package com.aurora.climatesync.service;
 
+import com.aurora.climatesync.model.CalendarEvent;
+import com.aurora.climatesync.model.Location;
 import org.springframework.stereotype.Service;
 
 import com.google.api.client.auth.oauth2.Credential;
@@ -23,6 +25,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.security.GeneralSecurityException;
+import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.List;
 
@@ -108,6 +111,21 @@ public class GoogleCalendarService {
                 System.out.printf("%s (%s)\n", event.getSummary(), start);
             }
         }
+    }
+    // Temporary mock method so the application runs
+    public List<CalendarEvent> getUpcomingEvents() {
+        // TODO: Implement Google OAuth + API call
+        // For now, return a mock event for testing
+        return List.of(
+                new CalendarEvent(
+                        "test-event-1",
+                        "Mock Event",
+                        "Placeholder event until Google OAuth is connected",
+                        ZonedDateTime.now().plusDays(1),
+                        ZonedDateTime.now().plusDays(1).plusHours(1),
+                        new Location("Toronto", "Canada")
+                )
+        );
     }
 }
 
