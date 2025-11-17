@@ -59,7 +59,7 @@ public class Main {
             }
             statusLabel.setText("Fetching...");
             outputArea.setText("");
-            Location location = new Location(city, country);
+            Location location = new Location(city, country, 0,0);
             List<WeatherForecast> forecasts = weatherService.getWeeklyForecast(location);
             StringBuilder sb = new StringBuilder();
             sb.append("=== 7-Day Weather Forecast for ").append(location).append(" ===\n\n");
