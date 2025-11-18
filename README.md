@@ -37,7 +37,6 @@ This project was developed by **Team Aurora** as part of the project blueprint d
 *   **Google Calendar Integration:** Securely connects to your Google Account to read and display your upcoming events.
 *   **Event-Specific Weather:** Automatically fetches and displays a detailed weather forecast right alongside each event that has a location.
 *   **Global Weather Search:** Look up the current and future weather for any city worldwide.
-*   **Performance-Optimized:** A smart caching system on the backend ensures that the UI loads instantly without repetitive API calls, providing a fast and smooth user experience.
 *   **Intuitive Dashboard:** A clean and responsive user interface that presents your schedule and the weather in a clear, easy-to-read format.
 
 ---
