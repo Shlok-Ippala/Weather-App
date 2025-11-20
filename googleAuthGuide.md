@@ -12,3 +12,4 @@ we essentially have a few steps needed before you can actually run the google ba
 
 7) you should be now able to run the ClimateSyncApplication.java (next to main. )
 
+8) while the app is running, visit the OAuth2 URL in your browser: http://localhost:8080/oauth2/authorization/google
