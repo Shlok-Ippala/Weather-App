@@ -1,0 +1,11 @@
+
+.idea/
+*.iws
+*.iml
+*.ipr
+
+Weather-App.iml
+src/main/resources/credentials.json
+src/main/resources/application.properties
+
+target/
