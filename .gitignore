@@ -6,5 +6,6 @@
 
 Weather-App.iml
 src/main/resources/credentials.json
+src/main/resources/application.propertiesq
 
 target/
