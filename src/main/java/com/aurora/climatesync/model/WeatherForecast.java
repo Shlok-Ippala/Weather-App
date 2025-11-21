@@ -5,36 +5,72 @@ import java.time.LocalDate;
 public class WeatherForecast {
 
     private LocalDate date;
-    private double maxTempareture;
-    private double minTempareture;
+    private double maxTemperature;
+    private double minTemperature;
     private String condition;
-    private double precipitationChance;
+    private double precipitationChance;   // 0.0–1.0
     private double windSpeed;
-    private Location location;
+    private String conditionIcon;
 
-    // Constructors
-    public WeatherForecast(LocalDate date, double maxTemperature, double minTemperature, String condition, double precipitationChance, double windSpeed) {
+
+    public WeatherForecast(LocalDate date,
+                           double maxTemperature,
+                           double minTemperature,
+                           String condition,
+                           double precipitationChance,
+                           double windSpeed) {
+
         this.date = date;
-        this.maxTempareture = maxTemperature;
-        this.minTempareture = minTemperature;
+        this.maxTemperature = maxTemperature;
+        this.minTemperature = minTemperature;
         this.condition = condition;
         this.precipitationChance = precipitationChance;
         this.windSpeed = windSpeed;
-        // this.location = location;
+
+        switch (condition.toLowerCase()) {
+            case "rain":
+            case "rainy":
+                this.conditionIcon = "🌧️";
+                break;
+
+            case "sunny":
+                this.conditionIcon = "☀️";
+                break;
+
+            case "cloudy":
+                this.conditionIcon = "☁️";
+                break;
+
+            case "windy":
+                this.conditionIcon = "💨";
+                break;
+
+            case "snow":
+                this.conditionIcon = "❄️";
+                break;
+
+            case "thunderstorm":
+                this.conditionIcon = "⛈️";
+                break;
+
+            default:
+                this.conditionIcon = "🌤️";   // partly cloudy default
+                break;
+        }
     }
 
+    // GETTERS
 
-    // Getters
     public LocalDate getDate() {
         return date;
     }
 
     public double getMaxTemperature() {
-        return maxTempareture;
+        return maxTemperature;
     }
 
     public double getMinTemperature() {
-        return minTempareture;
+        return minTemperature;
     }
 
     public String getCondition() {
@@ -49,52 +85,13 @@ public class WeatherForecast {
         return windSpeed;
     }
 
-    public Location getLocation() {
-        return location;
-    }
-
-    public boolean isRainLikely() {
-        return precipitationChance >= 0.5;
+    public String getConditionIcon() {
+        return conditionIcon;
     }
 
     @Override
     public String toString() {
-        int rainLikely = (int) (precipitationChance * 100);
-        /* String rainStatus = isRainLikely() ? "rain likely 🌧️" : "not rain likely ⛅️";
-        return String.format("%s | %s | High: %.1fºC | Low: %.1fºC | Precipitation: %d%% (%s) | Wind: %.1f km/h",
-                date, condition, maxTempareture, minTempareture, rainLikely, rainStatus, windSpeed); */
-        String icon;
-        switch (condition.toLowerCase()) {
-            case "rainy":
-                icon = "🌧️";
-                break;
-            case "sunny":
-                icon = "☀️";
-                break;
-            case "cloudy":
-                icon = "☁️";
-                break;
-            case "windy":
-                icon = "💨";
-                break;
-            case "snow":
-                icon = "🌨️";
-                break;
-            default:
-                icon = "⛅️";
-        }
-
-        String rainStatus = isRainLikely() ? "rain likely 🌧️" : "not rain likely ⛅️";
-        return String.format(
-                "%s %ns\n" +
-                "Condition          : %s %s\n" +
-                "High / Low         : %.1fºC / %.1fºC\n" +
-                "Precipitation      : %d%% (%s)\n" +
-                "Wind Speed         : %.1f km/h",
-                date, icon, condition,
-                maxTempareture, minTempareture,
-                rainLikely, rainStatus, windSpeed
-
-        );
+        return date + " " + condition + " " + conditionIcon +
+                " H:" + maxTemperature + "°  L:" + minTemperature + "°";
     }
 }
