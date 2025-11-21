@@ -13,14 +13,14 @@ public class WeatherForecast {
     private Location location;
 
     // Constructors
-    public WeatherForecast(LocalDate date, double maxTemperature, double minTemperature, String condition, double precipitationChance, double windSpeed, Location location) {
+    public WeatherForecast(LocalDate date, double maxTemperature, double minTemperature, String condition, double precipitationChance, double windSpeed) {
         this.date = date;
         this.maxTempareture = maxTemperature;
         this.minTempareture = minTemperature;
         this.condition = condition;
         this.precipitationChance = precipitationChance;
         this.windSpeed = windSpeed;
-        this.location = location;
+        // this.location = location;
     }
 
 
