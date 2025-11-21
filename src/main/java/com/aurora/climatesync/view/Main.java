@@ -24,9 +24,7 @@ public class Main {
         frame.setSize(520, 400);
         frame.setLocationRelativeTo(null);
 
-        // ----------------------------------------------------------
-        // TOP PANEL (unchanged)
-        // ----------------------------------------------------------
+        // TOP PANEL
         JPanel inputPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         JTextField cityField = new JTextField("Toronto", 10);
         JTextField countryField = new JTextField("Canada", 10);
@@ -138,7 +136,7 @@ public class Main {
         // 7 Day List
         for (WeatherForecast wf : forecasts) {
 
-            JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT));
+            JPanel row = new JPanel(new FlowLayout(FlowLayout.CENTER));
             row.setOpaque(false);
 
             JLabel dateLabel = new JLabel(wf.getDate().toString());
@@ -155,8 +153,57 @@ public class Main {
 
             panel.add(row);
         }
+        panel.add(Box.createVerticalStrut(25));
+        JPanel statsPanel = new JPanel();
+        statsPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 40, 10));
+        statsPanel.setOpaque(false);
+
+        // Wind Speed Box
+        JPanel windBox = new JPanel();
+        windBox.setPreferredSize(new Dimension(150, 80));
+        windBox.setBackground(new Color(255, 220, 220));
+        windBox.setBorder(BorderFactory.createLineBorder(Color.BLACK, 2));
+        windBox.setLayout(new BoxLayout(windBox, BoxLayout.Y_AXIS));
+
+        JLabel windTitle = new JLabel("Wind Speed");
+        windTitle.setFont(new Font("Arial", Font.BOLD, 16));
+        windTitle.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        JLabel windValue = new JLabel(((int) today.getWindSpeed()) + " km/h");
+        windValue.setFont(new Font("Arial", Font.BOLD, 22));
+        windValue.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        windBox.add(Box.createVerticalStrut(5));
+        windBox.add(windTitle);
+        windBox.add(windValue);
+
+        // Humidity Box
+        JPanel humidityBox = new JPanel();
+        humidityBox.setPreferredSize(new Dimension(150, 80));
+        humidityBox.setBackground(new Color(255, 220, 220));
+        humidityBox.setBorder(BorderFactory.createLineBorder(Color.BLACK, 2));
+        humidityBox.setLayout(new BoxLayout(humidityBox, BoxLayout.Y_AXIS));
+
+        JLabel humidityTitle = new JLabel("Humidity");
+        humidityTitle.setFont(new Font("Arial", Font.BOLD, 16));
+        humidityTitle.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        JLabel humidityValue = new JLabel((int) (today.getPrecipitationChance() * 100) + "%");
+        humidityValue.setFont(new Font("Arial", Font.BOLD, 22));
+        humidityValue.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        humidityBox.add(Box.createVerticalStrut(5));
+        humidityBox.add(humidityTitle);
+        humidityBox.add(humidityValue);
+
+        statsPanel.add(windBox);
+        statsPanel.add(humidityBox);
+
+        panel.add(statsPanel);
 
         panel.revalidate();
         panel.repaint();
+        System.out.println("Wind: " + today.getWindSpeed());
+        System.out.println("Humidity: " + today.getPrecipitationChance());
     }
 }
