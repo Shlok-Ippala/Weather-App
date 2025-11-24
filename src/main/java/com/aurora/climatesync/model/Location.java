@@ -60,11 +60,14 @@ public class Location {
         if (this == o) return true;
         if (!(o instanceof Location)) return false;
         Location that = (Location) o;
-        return Double.compare(that.latitude, latitude) == 0 && Double.compare(that.longitude, longitude) == 0;
+        return Double.compare(that.latitude, latitude) == 0 &&
+                Double.compare(that.longitude, longitude) == 0 &&
+                Objects.equals(cityName, that.cityName) &&
+                Objects.equals(country, that.country);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(cityName.toLowerCase(), country.toLowerCase());
+        return Objects.hash(cityName.toLowerCase(), country.toLowerCase(), latitude, longitude);
     }
 }
