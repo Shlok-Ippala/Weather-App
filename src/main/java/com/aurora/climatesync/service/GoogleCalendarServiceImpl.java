@@ -31,7 +31,7 @@ import java.util.List;
 
 @Service
 /* class to demonstrate use of Calendar events list API */
-public class GoogleCalendarService {
+public class GoogleCalendarServiceImpl implements CalendarService {
     /**
      * Application name.
      */
@@ -63,7 +63,7 @@ public class GoogleCalendarService {
     private static Credential getCredentials(final NetHttpTransport HTTP_TRANSPORT)
             throws IOException {
         // Load client secrets.
-        InputStream in = GoogleCalendarService.class.getResourceAsStream(CREDENTIALS_FILE_PATH);
+        InputStream in = GoogleCalendarServiceImpl.class.getResourceAsStream(CREDENTIALS_FILE_PATH);
         if (in == null) {
             throw new FileNotFoundException("Resource not found: " + CREDENTIALS_FILE_PATH);
         }

@@ -3,6 +3,7 @@ package com.aurora.climatesync.view;
 import com.aurora.climatesync.model.Location;
 import com.aurora.climatesync.model.WeatherForecast;
 import com.aurora.climatesync.service.WeatherService;
+import com.aurora.climatesync.service.WeatherServiceImpl;
 
 import javax.swing.*;
 import java.awt.*;
@@ -14,7 +15,7 @@ public class Main {
     private final WeatherService weatherService;
 
     public Main() {
-        this.weatherService = new WeatherService();
+        this.weatherService = new WeatherServiceImpl();
     }
 
     private void launchUI() {

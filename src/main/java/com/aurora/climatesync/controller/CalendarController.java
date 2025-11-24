@@ -1,7 +1,7 @@
 package com.aurora.climatesync.controller;
 
 import com.aurora.climatesync.model.CalendarEvent;
-import com.aurora.climatesync.service.GoogleCalendarService;
+import com.aurora.climatesync.service.CalendarService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -10,9 +10,9 @@ import java.util.List;
 @RestController
 public class CalendarController {
 
-    private final GoogleCalendarService calendarService;
+    private final CalendarService calendarService;
 
-    public CalendarController(GoogleCalendarService calendarService) {
+    public CalendarController(CalendarService calendarService) {
         this.calendarService = calendarService;
     }
 
