@@ -20,7 +20,10 @@ import com.google.api.services.calendar.CalendarScopes;
 import com.google.api.services.calendar.model.Event;
 import com.google.api.services.calendar.model.Events;
 
+import com.google.api.services.calendar.model.EventDateTime;
 import java.io.IOException;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.List;
@@ -30,7 +33,7 @@ public class GoogleCalendarServiceImpl implements CalendarService {
     private static final String APPLICATION_NAME = "ClimateSync";
     private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
     private static final String TOKENS_DIRECTORY_PATH = "tokens";
-    private static final List<String> SCOPES = Collections.singletonList(CalendarScopes.CALENDAR_READONLY);
+    private static final List<String> SCOPES = Collections.singletonList(CalendarScopes.CALENDAR);
 
     private Calendar client;
 
@@ -83,6 +86,39 @@ public class GoogleCalendarServiceImpl implements CalendarService {
     }
 
     @Override
+    public void addEvent(CalendarEvent calendarEvent) {
+        if (client == null) {
+            throw new IllegalStateException("Calendar client is not connected.");
+        }
+        try {
+            Event event = new Event()
+                    .setSummary(calendarEvent.getSummary())
+                    .setDescription(calendarEvent.getDescription());
+
+            DateTime startDateTime = new DateTime(calendarEvent.getStartTime().toInstant().toEpochMilli());
+            EventDateTime start = new EventDateTime()
+                    .setDateTime(startDateTime)
+                    .setTimeZone(calendarEvent.getStartTime().getZone().toString());
+            event.setStart(start);
+
+            DateTime endDateTime = new DateTime(calendarEvent.getEndTime().toInstant().toEpochMilli());
+            EventDateTime end = new EventDateTime()
+                    .setDateTime(endDateTime)
+                    .setTimeZone(calendarEvent.getEndTime().getZone().toString());
+            event.setEnd(end);
+
+            if (calendarEvent.getEventLocation() != null) {
+                event.setLocation(calendarEvent.getEventLocation().toString());
+            }
+
+            client.events().insert("primary", event).execute();
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Failed to add event to Google Calendar", e);
+        }
+    }
+
+    @Override
     public List<CalendarEvent> getUpcomingEvents() {
         if (client == null) {
             return Collections.emptyList();
@@ -100,21 +136,21 @@ public class GoogleCalendarServiceImpl implements CalendarService {
             List<Event> items = events.getItems();
             if (items != null) {
                 for (Event event : items) {
-                    // Basic mapping
                     DateTime start = event.getStart().getDateTime();
                     if (start == null) start = event.getStart().getDate();
                     DateTime end = event.getEnd().getDateTime();
                     if (end == null) end = event.getEnd().getDate();
 
-                    // Note: ZonedDateTime conversion is needed, but for now we just use current time or parse
-                    // This is a placeholder mapping as the main task is connection
+                    ZonedDateTime startTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(start.getValue()), ZoneId.systemDefault());
+                    ZonedDateTime endTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(end.getValue()), ZoneId.systemDefault());
+
                     calendarEvents.add(new CalendarEvent(
                         event.getId(),
                         event.getSummary(),
                         event.getDescription(),
-                        ZonedDateTime.now(), // Placeholder
-                        ZonedDateTime.now().plusHours(1), // Placeholder
-                        new Location("Unknown", "Unknown", 0, 0) // Placeholder
+                        startTime,
+                        endTime,
+                        new Location("Unknown", "Unknown", 0, 0) // Location parsing is complex, skipping for now
                     ));
                 }
             }
