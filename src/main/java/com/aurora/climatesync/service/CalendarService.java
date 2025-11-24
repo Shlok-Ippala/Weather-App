@@ -5,4 +5,5 @@ import java.util.List;
 
 public interface CalendarService {
     List<CalendarEvent> getUpcomingEvents();
+    String connect() throws Exception;
 }

@@ -1,21 +1,28 @@
 package com.aurora.climatesync.view;
 
+import com.aurora.climatesync.ClimatesyncApplication;
 import com.aurora.climatesync.model.Location;
 import com.aurora.climatesync.model.WeatherForecast;
+import com.aurora.climatesync.service.CalendarService;
 import com.aurora.climatesync.service.WeatherService;
-import com.aurora.climatesync.service.WeatherServiceImpl;
+import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.stereotype.Component;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.util.List;
 
+@Component
 public class Main {
 
     private final WeatherService weatherService;
+    private final CalendarService calendarService;
 
-    public Main() {
-        this.weatherService = new WeatherServiceImpl();
+    public Main(WeatherService weatherService, CalendarService calendarService) {
+        this.weatherService = weatherService;
+        this.calendarService = calendarService;
     }
 
     private void launchUI() {
@@ -30,12 +37,14 @@ public class Main {
         JTextField cityField = new JTextField("Toronto", 10);
         JTextField countryField = new JTextField("Canada", 10);
         JButton fetchButton = new JButton("Fetch Forecast");
+        JButton connectCalendarButton = new JButton("Connect to Google Calendar");
 
         inputPanel.add(new JLabel("City:"));
         inputPanel.add(cityField);
         inputPanel.add(new JLabel("Country:"));
         inputPanel.add(countryField);
         inputPanel.add(fetchButton);
+        inputPanel.add(connectCalendarButton);
 
         // OLD OUTPUT
         /*
@@ -104,6 +113,18 @@ public class Main {
             statusLabel.setText("Done.");
         });
 
+        connectCalendarButton.addActionListener(e -> {
+            new Thread(() -> {
+                try {
+                    String calendarId = calendarService.connect();
+                    JOptionPane.showMessageDialog(frame, "Connected! Primary Calendar ID: " + calendarId);
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                    JOptionPane.showMessageDialog(frame, "Failed to connect: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }).start();
+        });
+
         // Auto fetch on startup
         fetchButton.doClick();
 
@@ -111,7 +132,14 @@ public class Main {
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new Main().launchUI());
+        ConfigurableApplicationContext context = new SpringApplicationBuilder(ClimatesyncApplication.class)
+                .headless(false)
+                .run(args);
+
+        SwingUtilities.invokeLater(() -> {
+            Main app = context.getBean(Main.class);
+            app.launchUI();
+        });
     }
 
     // New Layout
@@ -122,14 +150,14 @@ public class Main {
         // City
         JLabel cityLabel = new JLabel(location.getCityName());
         cityLabel.setFont(new Font("Arial", Font.BOLD, 28));
-        cityLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        cityLabel.setAlignmentX(java.awt.Component.CENTER_ALIGNMENT);
         panel.add(cityLabel);
 
         // Today - temp
         WeatherForecast today = forecasts.get(0);
         JLabel todayTemp = new JLabel((int) today.getMaxTemperature() + "°C");
         todayTemp.setFont(new Font("Arial", Font.BOLD, 48));
-        todayTemp.setAlignmentX(Component.CENTER_ALIGNMENT);
+        todayTemp.setAlignmentX(java.awt.Component.CENTER_ALIGNMENT);
         panel.add(todayTemp);
 
         panel.add(Box.createVerticalStrut(20));
@@ -168,11 +196,11 @@ public class Main {
 
         JLabel windTitle = new JLabel("Wind Speed");
         windTitle.setFont(new Font("Arial", Font.BOLD, 16));
-        windTitle.setAlignmentX(Component.CENTER_ALIGNMENT);
+        windTitle.setAlignmentX(java.awt.Component.CENTER_ALIGNMENT);
 
         JLabel windValue = new JLabel(((int) today.getWindSpeed()) + " km/h");
         windValue.setFont(new Font("Arial", Font.BOLD, 22));
-        windValue.setAlignmentX(Component.CENTER_ALIGNMENT);
+        windValue.setAlignmentX(java.awt.Component.CENTER_ALIGNMENT);
 
         windBox.add(Box.createVerticalStrut(5));
         windBox.add(windTitle);
@@ -187,11 +215,11 @@ public class Main {
 
         JLabel humidityTitle = new JLabel("Humidity");
         humidityTitle.setFont(new Font("Arial", Font.BOLD, 16));
-        humidityTitle.setAlignmentX(Component.CENTER_ALIGNMENT);
+        humidityTitle.setAlignmentX(java.awt.Component.CENTER_ALIGNMENT);
 
         JLabel humidityValue = new JLabel((int) (today.getPrecipitationChance() * 100) + "%");
         humidityValue.setFont(new Font("Arial", Font.BOLD, 22));
-        humidityValue.setAlignmentX(Component.CENTER_ALIGNMENT);
+        humidityValue.setAlignmentX(java.awt.Component.CENTER_ALIGNMENT);
 
         humidityBox.add(Box.createVerticalStrut(5));
         humidityBox.add(humidityTitle);
