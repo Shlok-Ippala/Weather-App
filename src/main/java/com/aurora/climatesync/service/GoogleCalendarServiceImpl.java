@@ -20,112 +20,145 @@ import com.google.api.services.calendar.CalendarScopes;
 import com.google.api.services.calendar.model.Event;
 import com.google.api.services.calendar.model.Events;
 
-import java.io.FileNotFoundException;
+import com.google.api.services.calendar.model.EventDateTime;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.security.GeneralSecurityException;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.List;
 
 @Service
-/* class to demonstrate use of Calendar events list API */
 public class GoogleCalendarServiceImpl implements CalendarService {
-    /**
-     * Application name.
-     */
-    private static final String APPLICATION_NAME = "Google Calendar API Java Quickstart";
-    /**
-     * Global instance of the JSON factory.
-     */
+    private static final String APPLICATION_NAME = "ClimateSync";
     private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
-    /**
-     * Directory to store authorization tokens for this application.
-     */
     private static final String TOKENS_DIRECTORY_PATH = "tokens";
+    private static final List<String> SCOPES = Collections.singletonList(CalendarScopes.CALENDAR);
 
-    /**
-     * Global instance of the scopes required by this quickstart.
-     * If modifying these scopes, delete your previously saved tokens/ folder.
-     */
-    private static final List<String> SCOPES =
-            Collections.singletonList(CalendarScopes.CALENDAR_READONLY);
-    private static final String CREDENTIALS_FILE_PATH = "/credentials.json";
+    private Calendar client;
 
-    /**
-     * Creates an authorized Credential object.
-     *
-     * @param HTTP_TRANSPORT The network HTTP Transport.
-     * @return An authorized Credential object.
-     * @throws IOException If the credentials.json file cannot be found.
-     */
-    private static Credential getCredentials(final NetHttpTransport HTTP_TRANSPORT)
-            throws IOException {
-        // Load client secrets.
-        InputStream in = GoogleCalendarServiceImpl.class.getResourceAsStream(CREDENTIALS_FILE_PATH);
-        if (in == null) {
-            throw new FileNotFoundException("Resource not found: " + CREDENTIALS_FILE_PATH);
+    private final String clientId;
+    private final String clientSecret;
+
+    public GoogleCalendarServiceImpl(
+            @org.springframework.beans.factory.annotation.Value("${spring.security.oauth2.client.registration.google.client-id}") String clientId,
+            @org.springframework.beans.factory.annotation.Value("${spring.security.oauth2.client.registration.google.client-secret}") String clientSecret) {
+        this.clientId = clientId;
+        this.clientSecret = clientSecret;
+    }
+
+    private Credential getCredentials(final NetHttpTransport HTTP_TRANSPORT) throws IOException {
+        if (clientId == null || clientSecret == null || clientId.isEmpty() || clientSecret.isEmpty()) {
+            throw new IOException("Client ID and Client Secret must be configured in application.properties.");
         }
-        GoogleClientSecrets clientSecrets =
-                GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
 
-        // Build flow and trigger user authorization request.
+        GoogleClientSecrets.Details details = new GoogleClientSecrets.Details();
+        details.setClientId(clientId);
+        details.setClientSecret(clientSecret);
+
+        GoogleClientSecrets clientSecrets = new GoogleClientSecrets();
+        clientSecrets.setInstalled(details);
+
         GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
                 HTTP_TRANSPORT, JSON_FACTORY, clientSecrets, SCOPES)
                 .setDataStoreFactory(new FileDataStoreFactory(new java.io.File(TOKENS_DIRECTORY_PATH)))
                 .setAccessType("offline")
                 .build();
         LocalServerReceiver receiver = new LocalServerReceiver.Builder().setPort(8888).build();
-        Credential credential = new AuthorizationCodeInstalledApp(flow, receiver).authorize("user");
-        //returns an authorized Credential object.
-        return credential;
+        return authorize(flow, receiver);
     }
 
-    public static void main(String... args) throws IOException, GeneralSecurityException {
-        // Build a new authorized API client service.
-        final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
-        Calendar service =
-                new Calendar.Builder(HTTP_TRANSPORT, JSON_FACTORY, getCredentials(HTTP_TRANSPORT))
-                        .setApplicationName(APPLICATION_NAME)
-                        .build();
+    protected Credential authorize(GoogleAuthorizationCodeFlow flow, LocalServerReceiver receiver) throws IOException {
+        return new AuthorizationCodeInstalledApp(flow, receiver).authorize("user");
+    }
 
-        // List the next 10 events from the primary calendar.
-        DateTime now = new DateTime(System.currentTimeMillis());
-        Events events = service.events().list("primary")
-                .setMaxResults(10)
-                .setTimeMin(now)
-                .setOrderBy("startTime")
-                .setSingleEvents(true)
-                .execute();
-        List<Event> items = events.getItems();
-        if (items.isEmpty()) {
-            System.out.println("No upcoming events found.");
-        } else {
-            System.out.println("Upcoming events");
-            for (Event event : items) {
-                DateTime start = event.getStart().getDateTime();
-                if (start == null) {
-                    start = event.getStart().getDate();
-                }
-                System.out.printf("%s (%s)\n", event.getSummary(), start);
+    @Override
+    public String connect() throws Exception {
+        final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
+        Credential credential = getCredentials(HTTP_TRANSPORT);
+        this.client = new Calendar.Builder(HTTP_TRANSPORT, JSON_FACTORY, credential)
+                .setApplicationName(APPLICATION_NAME)
+                .build();
+
+        // Test call to verify token
+        com.google.api.services.calendar.model.Calendar calendar = client.calendars().get("primary").execute();
+        return calendar.getId();
+    }
+
+    @Override
+    public void addEvent(CalendarEvent calendarEvent) {
+        if (client == null) {
+            throw new IllegalStateException("Calendar client is not connected.");
+        }
+        try {
+            Event event = new Event()
+                    .setSummary(calendarEvent.getSummary())
+                    .setDescription(calendarEvent.getDescription());
+
+            DateTime startDateTime = new DateTime(calendarEvent.getStartTime().toInstant().toEpochMilli());
+            EventDateTime start = new EventDateTime()
+                    .setDateTime(startDateTime)
+                    .setTimeZone(calendarEvent.getStartTime().getZone().toString());
+            event.setStart(start);
+
+            DateTime endDateTime = new DateTime(calendarEvent.getEndTime().toInstant().toEpochMilli());
+            EventDateTime end = new EventDateTime()
+                    .setDateTime(endDateTime)
+                    .setTimeZone(calendarEvent.getEndTime().getZone().toString());
+            event.setEnd(end);
+
+            if (calendarEvent.getEventLocation() != null) {
+                event.setLocation(calendarEvent.getEventLocation().toString());
             }
+
+            client.events().insert("primary", event).execute();
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Failed to add event to Google Calendar", e);
         }
     }
-    // Temporary mock method so the application runs
+
+    @Override
     public List<CalendarEvent> getUpcomingEvents() {
-        // TODO: Implement Google OAuth + API call
-        // For now, return a mock event for testing
-        return List.of(
-                new CalendarEvent(
-                        "test-event-1",
-                        "Mock Event",
-                        "Placeholder event until Google OAuth is connected",
-                        ZonedDateTime.now().plusDays(1),
-                        ZonedDateTime.now().plusDays(1).plusHours(1),
-                        new Location("Toronto", "Canada", 0, 0)
-                )
-        );
+        if (client == null) {
+            return Collections.emptyList();
+        }
+        try {
+            DateTime now = new DateTime(System.currentTimeMillis());
+            Events events = client.events().list("primary")
+                    .setMaxResults(10)
+                    .setTimeMin(now)
+                    .setOrderBy("startTime")
+                    .setSingleEvents(true)
+                    .execute();
+            
+            List<CalendarEvent> calendarEvents = new java.util.ArrayList<>();
+            List<Event> items = events.getItems();
+            if (items != null) {
+                for (Event event : items) {
+                    DateTime start = event.getStart().getDateTime();
+                    if (start == null) start = event.getStart().getDate();
+                    DateTime end = event.getEnd().getDateTime();
+                    if (end == null) end = event.getEnd().getDate();
+
+                    ZonedDateTime startTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(start.getValue()), ZoneId.systemDefault());
+                    ZonedDateTime endTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(end.getValue()), ZoneId.systemDefault());
+
+                    calendarEvents.add(new CalendarEvent(
+                        event.getId(),
+                        event.getSummary(),
+                        event.getDescription(),
+                        startTime,
+                        endTime,
+                        new Location("Unknown", "Unknown", 0, 0) // Location parsing is complex, skipping for now
+                    ));
+                }
+            }
+            return calendarEvents;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return Collections.emptyList();
+        }
     }
 }
 

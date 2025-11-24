@@ -4,7 +4,7 @@ spring.application.name=ClimateSync
 
 # Google OAuth2 credentials
 # Fill these in with your client ID and client secret
-spring.security.oauth2.client.registration.google.client-id=
-spring.security.oauth2.client.registration.google.client-secret=
+spring.security.oauth2.client.registration.google.client-id=YOUR_CLIENT_ID_HERE
+spring.security.oauth2.client.registration.google.client-secret=YOUR_CLIENT_SECRET_HERE
 spring.security.oauth2.client.registration.google.scope=openid,email,profile,https://www.googleapis.com/auth/calendar.readonly
 spring.security.oauth2.client.registration.google.redirect-uri=http://localhost:8080/login/oauth2/code/google
