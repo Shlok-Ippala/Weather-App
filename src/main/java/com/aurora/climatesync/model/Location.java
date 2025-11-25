@@ -52,6 +52,9 @@ public class Location {
 
     @Override
     public String toString() {
+        if (country == null || country.equalsIgnoreCase("Unknown") || country.isEmpty()) {
+            return cityName;
+        }
         return cityName + ", " + country;
     }
 

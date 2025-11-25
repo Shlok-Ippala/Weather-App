@@ -10,7 +10,7 @@ import java.awt.*;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
+
 
 public class EditEventDialog extends JDialog {
     private final CalendarEvent event;
@@ -43,19 +43,19 @@ public class EditEventDialog extends JDialog {
         if (locStr == null) locStr = "";
         JTextField locField = new JTextField(locStr, 20);
         
-        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
-        JTextField startField = new JTextField(event.getStartTime().format(fmt), 20);
-        JTextField endField = new JTextField(event.getEndTime().format(fmt), 20);
+        DateTimePicker startPicker = new DateTimePicker(event.getStartTime().toLocalDateTime());
+        DateTimePicker endPicker = new DateTimePicker(event.getEndTime().toLocalDateTime());
         
         JComboBox<String> colorCombo = new JComboBox<>(EventColorUtil.COLOR_NAMES);
+        colorCombo.setRenderer(new ColorListCellRenderer());
         colorCombo.setSelectedIndex(EventColorUtil.getColorIndex(event.getColorId()));
 
         int row = 0;
         addFormRow(formPanel, gbc, row++, "Title:", titleField);
         addFormRow(formPanel, gbc, row++, "Description:", descField);
         addFormRow(formPanel, gbc, row++, "Location:", locField);
-        addFormRow(formPanel, gbc, row++, "Start (yyyy-MM-dd HH:mm):", startField);
-        addFormRow(formPanel, gbc, row++, "End (yyyy-MM-dd HH:mm):", endField);
+        addFormRow(formPanel, gbc, row++, "Start:", startPicker);
+        addFormRow(formPanel, gbc, row++, "End:", endPicker);
         addFormRow(formPanel, gbc, row++, "Color:", colorCombo);
 
         add(formPanel, BorderLayout.CENTER);
@@ -81,8 +81,8 @@ public class EditEventDialog extends JDialog {
                 String title = titleField.getText();
                 String desc = descField.getText();
                 String loc = locField.getText();
-                LocalDateTime startLdt = LocalDateTime.parse(startField.getText(), fmt);
-                LocalDateTime endLdt = LocalDateTime.parse(endField.getText(), fmt);
+                LocalDateTime startLdt = startPicker.getDateTime();
+                LocalDateTime endLdt = endPicker.getDateTime();
                 
                 ZonedDateTime startZdt = startLdt.atZone(ZoneId.systemDefault());
                 ZonedDateTime endZdt = endLdt.atZone(ZoneId.systemDefault());
