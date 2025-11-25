@@ -2,7 +2,9 @@ package com.aurora.climatesync.view;
 
 import com.aurora.climatesync.ClimatesyncApplication;
 import com.aurora.climatesync.service.CalendarService;
+import com.aurora.climatesync.service.DashboardService;
 import com.aurora.climatesync.service.WeatherService;
+
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.stereotype.Component;
@@ -14,10 +16,12 @@ public class Main {
 
     private final WeatherService weatherService;
     private final CalendarService calendarService;
+    private final DashboardService dashboardService;
 
-    public Main(WeatherService weatherService, CalendarService calendarService) {
+    public Main(WeatherService weatherService, CalendarService calendarService, DashboardService dashboardService) {
         this.weatherService = weatherService;
         this.calendarService = calendarService;
+        this.dashboardService = dashboardService;
     }
 
     private void launchUI() {
@@ -28,8 +32,8 @@ public class Main {
 
         JTabbedPane tabbedPane = new JTabbedPane();
 
-        // Home Tab (formerly Dashboard)
-        DashboardView dashboardView = new DashboardView(calendarService, weatherService);
+        // Home Tab
+        DashboardView dashboardView = new DashboardView(calendarService, dashboardService);
         tabbedPane.addTab("Home", dashboardView);
 
         // Weather Tab

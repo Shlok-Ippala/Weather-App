@@ -1,5 +1,6 @@
 package com.aurora.climatesync.service;
 
+import com.aurora.climatesync.exception.WeatherServiceException;
 import com.aurora.climatesync.model.Location;
 import com.aurora.climatesync.model.WeatherForecast;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,8 +13,10 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.when;
 
 class WeatherServiceImplTest {
@@ -21,27 +24,24 @@ class WeatherServiceImplTest {
     @Mock
     private RestTemplate restTemplate;
 
+    @Mock
+    private OpenMeteoParser parser;
+
     private WeatherServiceImpl weatherService;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        weatherService = new WeatherServiceImpl(restTemplate, "https://api.open-meteo.com/v1/forecast", "https://geocoding-api.open-meteo.com/v1/search");
+        weatherService = new WeatherServiceImpl(restTemplate, "https://api.open-meteo.com/v1/forecast", "https://geocoding-api.open-meteo.com/v1/search", parser);
     }
 
     @Test
-    void testGetWeeklyForecast_Success() {
-        String mockResponse = "{"
-                + "\"daily\": {"
-                + "\"time\": [\"2023-10-27\"],"
-                + "\"temperature_2m_max\": [15.5],"
-                + "\"temperature_2m_min\": [5.0],"
-                + "\"precipitation_probability_mean\": [20],"
-                + "\"weathercode\": [1]"
-                + "}"
-                + "}";
-
+    void testGetWeeklyForecast_Success() throws Exception {
+        String mockResponse = "{}"; // Response content doesn't matter as we mock parser
+        
+        WeatherForecast mockForecast = new WeatherForecast(LocalDate.of(2023, 10, 27), 15.5, 5.0, "Cloudy", 0.2, 0);
         when(restTemplate.getForObject(anyString(), eq(String.class))).thenReturn(mockResponse);
+        when(parser.parseForecastResponse(mockResponse)).thenReturn(List.of(mockForecast));
 
         List<WeatherForecast> forecasts = weatherService.getWeeklyForecast(43.7, -79.4);
 
@@ -49,36 +49,25 @@ class WeatherServiceImplTest {
         WeatherForecast forecast = forecasts.get(0);
         assertEquals(LocalDate.of(2023, 10, 27), forecast.getDate());
         assertEquals(15.5, forecast.getMaxTemperature());
-        assertEquals(5.0, forecast.getMinTemperature());
-        assertEquals(0.2, forecast.getPrecipitationChance());
-        assertEquals("Cloudy", forecast.getCondition());
     }
 
     @Test
     void testGetWeeklyForecast_ApiFailure() {
         when(restTemplate.getForObject(anyString(), eq(String.class))).thenThrow(new RuntimeException("API Error"));
 
-        List<WeatherForecast> forecasts = weatherService.getWeeklyForecast(43.7, -79.4);
-
-        assertNotNull(forecasts);
-        assertTrue(forecasts.isEmpty());
+        assertThrows(WeatherServiceException.class, () -> {
+            weatherService.getWeeklyForecast(43.7, -79.4);
+        });
     }
 
     @Test
-    void testGetWeeklyForecast_WithLocation() {
+    void testGetWeeklyForecast_WithLocation() throws Exception {
         Location location = new Location("Toronto", "Canada", 43.7, -79.4);
+        String mockResponse = "{}";
         
-        String mockResponse = "{"
-                + "\"daily\": {"
-                + "\"time\": [\"2023-10-27\"],"
-                + "\"temperature_2m_max\": [10.0],"
-                + "\"temperature_2m_min\": [2.0],"
-                + "\"precipitation_probability_mean\": [0],"
-                + "\"weathercode\": [0]"
-                + "}"
-                + "}";
-
+        WeatherForecast mockForecast = new WeatherForecast(LocalDate.of(2023, 10, 27), 10.0, 2.0, "Clear", 0.0, 0);
         when(restTemplate.getForObject(anyString(), eq(String.class))).thenReturn(mockResponse);
+        when(parser.parseForecastResponse(mockResponse)).thenReturn(List.of(mockForecast));
 
         List<WeatherForecast> forecasts = weatherService.getWeeklyForecast(location);
 
@@ -88,18 +77,20 @@ class WeatherServiceImplTest {
     
     @Test
     void testResolveLocation_Success() {
-        String mockGeoResponse = "{"
-                + "\"results\": [{"
-                + "\"latitude\": 43.7,"
-                + "\"longitude\": -79.4,"
-                + "\"name\": \"Toronto\","
-                + "\"country\": \"Canada\""
-                + "}]"
-                + "}";
+        String mockGeoResponse = "{}";
         
         when(restTemplate.getForObject(anyString(), eq(String.class))).thenReturn(mockGeoResponse);
         
         Location loc = new Location("Toronto", "Canada", 0, 0);
+        
+        // Simulate parser updating the location
+        doAnswer(invocation -> {
+            Location l = invocation.getArgument(1);
+            l.setLatitude(43.7);
+            l.setLongitude(-79.4);
+            return null;
+        }).when(parser).parseGeocodingResponse(anyString(), any(Location.class));
+
         weatherService.resolveLocation(loc);
         
         assertEquals(43.7, loc.getLatitude());

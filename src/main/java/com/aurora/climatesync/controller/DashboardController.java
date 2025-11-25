@@ -4,6 +4,7 @@ import com.aurora.climatesync.model.CalendarEvent;
 import com.aurora.climatesync.model.DashboardEvent;
 import com.aurora.climatesync.model.WeatherForecast;
 import com.aurora.climatesync.service.CalendarService;
+import com.aurora.climatesync.service.DashboardService;
 import com.aurora.climatesync.service.WeatherService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -16,27 +17,14 @@ import java.util.List;
 @RequestMapping("/api")
 public class DashboardController {
 
-    private final CalendarService calendarService;
-    private final WeatherService weatherService;
+    private final DashboardService dashboardService;
 
-    public DashboardController(CalendarService calendarService, WeatherService weatherService) {
-        this.calendarService = calendarService;
-        this.weatherService = weatherService;
+    public DashboardController(DashboardService dashboardService) {
+        this.dashboardService = dashboardService;
     }
 
     @GetMapping("/dashboard")
     public List<DashboardEvent> getDashboardEvents() {
-        List<CalendarEvent> events = calendarService.getUpcomingEvents();
-        List<DashboardEvent> dashboardEvents = new ArrayList<>();
-
-        for (CalendarEvent event : events) {
-            WeatherForecast forecast = null;
-            if (event.getEventLocation() != null) {
-                forecast = weatherService.getForecastForDate(event.getEventLocation(), event.getStartTime().toLocalDate());
-            }
-            dashboardEvents.add(new DashboardEvent(event, forecast));
-        }
-
-        return dashboardEvents;
+        return dashboardService.getDashboardEvents();
     }
 }

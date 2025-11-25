@@ -2,7 +2,6 @@ package com.aurora.climatesync.service;
 
 import com.aurora.climatesync.model.CalendarEvent;
 import com.aurora.climatesync.model.Location;
-import com.google.api.client.util.DateTime;
 import com.google.api.services.calendar.Calendar;
 import com.google.api.services.calendar.model.Event;
 import com.google.api.services.calendar.model.Events;
@@ -23,96 +22,136 @@ import static org.mockito.Mockito.*;
 
 class GoogleCalendarServiceImplTest {
 
-    private GoogleCalendarServiceImpl service;
+    @Mock
+    private GoogleCredentialManager credentialManager;
 
     @Mock
-    private Calendar mockCalendarClient;
+    private GoogleEventMapper eventMapper;
+
     @Mock
-    private Calendar.Events mockEvents;
+    private Calendar client;
+
     @Mock
-    private Calendar.Events.List mockList;
+    private Calendar.Events eventsResource;
+
     @Mock
-    private Calendar.Events.Insert mockInsert;
+    private Calendar.Events.List listRequest;
+
     @Mock
-    private Calendar.Events.Delete mockDelete;
+    private Calendar.Events.Insert insertRequest;
+
     @Mock
-    private Calendar.Events.Update mockUpdate;
+    private Calendar.Events.Update updateRequest;
+    
     @Mock
-    private Calendar.Events.Get mockGet;
+    private Calendar.Events.Get getRequest;
+    
     @Mock
-    private GoogleCredentialManager mockCredentialManager;
+    private Calendar.Events.Delete deleteRequest;
+
+    private GoogleCalendarServiceImpl service;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        service = new GoogleCalendarServiceImpl(mockCredentialManager);
-        service.setCalendarClient(mockCalendarClient);
+        service = new GoogleCalendarServiceImpl(credentialManager, eventMapper);
+        service.client = client; // Inject mock client
     }
 
     @Test
-    void testConnectThrowsExceptionWhenCredentialManagerFails() throws Exception {
-        when(mockCredentialManager.getCredentials(any())).thenThrow(new IOException("Auth failed"));
+    void getUpcomingEvents_ShouldReturnEvents_WhenClientIsConnected() throws IOException {
+        // Arrange
+        when(client.events()).thenReturn(eventsResource);
+        when(eventsResource.list(anyString())).thenReturn(listRequest);
+        when(listRequest.setMaxResults(anyInt())).thenReturn(listRequest);
+        when(listRequest.setTimeMin(any())).thenReturn(listRequest);
+        when(listRequest.setOrderBy(anyString())).thenReturn(listRequest);
+        when(listRequest.setSingleEvents(anyBoolean())).thenReturn(listRequest);
+
+        Events events = new Events();
+        Event googleEvent = new Event();
+        events.setItems(Collections.singletonList(googleEvent));
+        when(listRequest.execute()).thenReturn(events);
+
+        CalendarEvent calendarEvent = new CalendarEvent("1", "Test", "Desc", ZonedDateTime.now(), ZonedDateTime.now().plusHours(1), new Location(), "1");
+        when(eventMapper.mapToCalendarEvent(googleEvent)).thenReturn(calendarEvent);
+
+        // Act
+        List<CalendarEvent> result = service.getUpcomingEvents();
+
+        // Assert
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertEquals(calendarEvent, result.get(0));
+        verify(eventMapper).mapToCalendarEvent(googleEvent);
+    }
+
+    @Test
+    void getUpcomingEvents_ShouldReturnEmptyList_WhenClientIsNull() {
+        // Arrange
+        service.client = null;
+
+        // Act
+        List<CalendarEvent> result = service.getUpcomingEvents();
+
+        // Assert
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void addEvent_ShouldCallInsert_WhenClientIsConnected() throws IOException {
+        // Arrange
+        CalendarEvent calendarEvent = new CalendarEvent("1", "Test", "Desc", ZonedDateTime.now(), ZonedDateTime.now().plusHours(1), new Location(), "1");
+        Event googleEvent = new Event();
         
-        Exception exception = assertThrows(IOException.class, service::connect);
-        assertEquals("Auth failed", exception.getMessage());
+        when(eventMapper.mapToGoogleEvent(calendarEvent)).thenReturn(googleEvent);
+        when(client.events()).thenReturn(eventsResource);
+        when(eventsResource.insert(anyString(), any(Event.class))).thenReturn(insertRequest);
+        when(insertRequest.execute()).thenReturn(googleEvent);
+
+        // Act
+        service.addEvent(calendarEvent);
+
+        // Assert
+        verify(client.events()).insert("primary", googleEvent);
+        verify(insertRequest).execute();
     }
 
     @Test
-    void testGetUpcomingEvents() throws IOException {
-        when(mockCalendarClient.events()).thenReturn(mockEvents);
-        when(mockEvents.list(anyString())).thenReturn(mockList);
-        // Chain the fluent API calls
-        when(mockList.setMaxResults(anyInt())).thenReturn(mockList);
-        when(mockList.setTimeMin(any(DateTime.class))).thenReturn(mockList);
-        when(mockList.setOrderBy(anyString())).thenReturn(mockList);
-        when(mockList.setSingleEvents(anyBoolean())).thenReturn(mockList);
-        when(mockList.execute()).thenReturn(new Events().setItems(Collections.emptyList()));
+    void updateEvent_ShouldCallUpdate_WhenClientIsConnected() throws IOException {
+        // Arrange
+        CalendarEvent calendarEvent = new CalendarEvent("1", "Test", "Desc", ZonedDateTime.now(), ZonedDateTime.now().plusHours(1), new Location(), "1");
+        Event googleEvent = new Event();
+        googleEvent.setId("1");
 
-        List<CalendarEvent> events = service.getUpcomingEvents();
-        assertNotNull(events);
-        assertTrue(events.isEmpty());
-    }
+        when(client.events()).thenReturn(eventsResource);
+        when(eventsResource.get(anyString(), anyString())).thenReturn(getRequest);
+        when(getRequest.execute()).thenReturn(googleEvent);
+        
+        when(eventsResource.update(anyString(), anyString(), any(Event.class))).thenReturn(updateRequest);
+        when(updateRequest.execute()).thenReturn(googleEvent);
 
-    @Test
-    void testAddEvent() throws IOException {
-        when(mockCalendarClient.events()).thenReturn(mockEvents);
-        when(mockEvents.insert(anyString(), any(Event.class))).thenReturn(mockInsert);
-        when(mockInsert.execute()).thenReturn(new Event());
+        // Act
+        service.updateEvent(calendarEvent);
 
-        CalendarEvent event = new CalendarEvent("1", "Title", "Desc", ZonedDateTime.now(), ZonedDateTime.now().plusHours(1), new Location("City", "Country", 0, 0));
-        service.addEvent(event);
-
-        verify(mockEvents).insert(eq("primary"), any(Event.class));
+        // Assert
+        verify(eventMapper).updateGoogleEvent(googleEvent, calendarEvent);
+        verify(client.events()).update("primary", googleEvent.getId(), googleEvent);
+        verify(updateRequest).execute();
     }
     
     @Test
-    void testDeleteEvent() throws IOException {
-        when(mockCalendarClient.events()).thenReturn(mockEvents);
-        when(mockEvents.delete(anyString(), anyString())).thenReturn(mockDelete);
-        // execute() is void, so we don't need to stub return value, just verify it's called
+    void deleteEvent_ShouldCallDelete_WhenClientIsConnected() throws IOException {
+        // Arrange
+        String eventId = "event123";
+        when(client.events()).thenReturn(eventsResource);
+        when(eventsResource.delete(anyString(), anyString())).thenReturn(deleteRequest);
         
-        service.deleteEvent("eventId");
-
-        verify(mockEvents).delete("primary", "eventId");
-        verify(mockDelete).execute();
-    }
-    
-    @Test
-    void testUpdateEvent() throws IOException {
-        when(mockCalendarClient.events()).thenReturn(mockEvents);
+        // Act
+        service.deleteEvent(eventId);
         
-        // Mock get() call
-        when(mockEvents.get(anyString(), anyString())).thenReturn(mockGet);
-        Event existingEvent = new Event().setId("eventId");
-        when(mockGet.execute()).thenReturn(existingEvent);
-        
-        // Mock update() call
-        when(mockEvents.update(anyString(), anyString(), any(Event.class))).thenReturn(mockUpdate);
-        when(mockUpdate.execute()).thenReturn(new Event());
-
-        CalendarEvent event = new CalendarEvent("eventId", "Title", "Desc", ZonedDateTime.now(), ZonedDateTime.now().plusHours(1), new Location("City", "Country", 0, 0));
-        service.updateEvent(event);
-
-        verify(mockEvents).update(eq("primary"), eq("eventId"), any(Event.class));
+        // Assert
+        verify(client.events()).delete("primary", eventId);
+        verify(deleteRequest).execute();
     }
 }

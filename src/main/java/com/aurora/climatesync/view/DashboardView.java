@@ -2,14 +2,18 @@ package com.aurora.climatesync.view;
 
 import com.aurora.climatesync.model.CalendarEvent;
 import com.aurora.climatesync.model.DashboardEvent;
-import com.aurora.climatesync.model.WeatherForecast;
 import com.aurora.climatesync.service.CalendarService;
-import com.aurora.climatesync.service.WeatherService;
+import com.aurora.climatesync.service.DashboardService;
 import com.aurora.climatesync.util.EventColorUtil;
+import com.aurora.climatesync.view.component.DayViewPanel;
+import com.aurora.climatesync.view.component.MonthViewPanel;
+import com.aurora.climatesync.view.component.WeekViewPanel;
 import com.aurora.climatesync.view.dialog.AddEventDialog;
 import com.aurora.climatesync.view.dialog.EditEventDialog;
 
 import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import java.awt.*;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
@@ -21,10 +25,11 @@ import java.util.stream.Collectors;
 
 public class DashboardView extends JPanel {
     private final CalendarService calendarService;
-    private final WeatherService weatherService;
+    private final DashboardService dashboardService;
 
     // UI Components
     private final JLabel statusLabel;
+
     private final JTextField searchField;
     private final CardLayout cardLayout;
     private final JPanel contentPanel;
@@ -33,17 +38,17 @@ public class DashboardView extends JPanel {
 
     // View Containers
     private final JPanel listViewContainer;
-    private final JPanel dayViewContainer;
-    private final JPanel weekViewContainer;
-    private final JPanel monthViewContainer;
+    private final DayViewPanel dayViewPanel;
+    private final WeekViewPanel weekViewPanel;
+    private final MonthViewPanel monthViewPanel;
 
     // Data State
     private List<DashboardEvent> allEvents = new ArrayList<>();
     private LocalDate currentDate = LocalDate.now();
     
-    public DashboardView(CalendarService calendarService, WeatherService weatherService) {
+    public DashboardView(CalendarService calendarService, DashboardService dashboardService) {
         this.calendarService = calendarService;
-        this.weatherService = weatherService;
+        this.dashboardService = dashboardService;
         this.setLayout(new BorderLayout());
 
         // --- Top Bar ---
@@ -59,6 +64,22 @@ public class DashboardView extends JPanel {
         searchPanel.setOpaque(false);
         searchField = new JTextField(20);
         searchField.putClientProperty("JTextField.placeholderText", "Search events...");
+        searchField.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                updateView();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                updateView();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                updateView();
+            }
+        });
         searchPanel.add(new JLabel("Search: "));
         searchPanel.add(searchField);
 
@@ -116,17 +137,14 @@ public class DashboardView extends JPanel {
         listViewContainer = new JPanel();
         listViewContainer.setLayout(new BoxLayout(listViewContainer, BoxLayout.Y_AXIS));
         
-        dayViewContainer = new JPanel();
-        dayViewContainer.setLayout(new BoxLayout(dayViewContainer, BoxLayout.Y_AXIS));
-
-        weekViewContainer = new JPanel(new GridLayout(1, 7));
-        
-        monthViewContainer = new JPanel(new BorderLayout());
+        dayViewPanel = new DayViewPanel();
+        weekViewPanel = new WeekViewPanel();
+        monthViewPanel = new MonthViewPanel();
 
         contentPanel.add(new JScrollPane(listViewContainer), "List All");
-        contentPanel.add(new JScrollPane(dayViewContainer), "Day");
-        contentPanel.add(new JScrollPane(weekViewContainer), "Week");
-        contentPanel.add(new JScrollPane(monthViewContainer), "Month");
+        contentPanel.add(dayViewPanel, "Day");
+        contentPanel.add(weekViewPanel, "Week");
+        contentPanel.add(monthViewPanel, "Month");
 
         this.add(contentPanel, BorderLayout.CENTER);
 
@@ -147,6 +165,25 @@ public class DashboardView extends JPanel {
 
         prevButton.addActionListener(e -> navigate(-1));
         nextButton.addActionListener(e -> navigate(1));
+
+        // Search field listener for real-time filtering
+        searchField.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                filterEvents();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                filterEvents();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                // Plain text components don't fire this, but we include it for completeness
+                filterEvents();
+            }
+        });
 
         // Initial Load
         loadDashboardData();
@@ -186,7 +223,7 @@ public class DashboardView extends JPanel {
     }
 
     private void loadDashboardData() {
-        statusLabel.setText("Loading dashboard data...");
+        statusLabel.setText("Loading first 10 events...");
         
         if (!calendarService.isConnected()) {
             showConnectionError();
@@ -196,21 +233,30 @@ public class DashboardView extends JPanel {
         new SwingWorker<List<DashboardEvent>, Void>() {
             @Override
             protected List<DashboardEvent> doInBackground() throws Exception {
-                List<CalendarEvent> events = calendarService.getUpcomingEvents();
-                List<DashboardEvent> dashboardEvents = new ArrayList<>();
+                return dashboardService.getDashboardEvents(10);
+            }
 
-                for (CalendarEvent event : events) {
-                    WeatherForecast forecast = null;
-                    if (event.getEventLocation() != null) {
-                        try {
-                            forecast = weatherService.getForecastForDate(event.getEventLocation(), event.getStartTime().toLocalDate());
-                        } catch (Exception e) {
-                            System.err.println("Could not fetch weather for event: " + event.getSummary());
-                        }
-                    }
-                    dashboardEvents.add(new DashboardEvent(event, forecast));
+            @Override
+            protected void done() {
+                try {
+                    List<DashboardEvent> initialEvents = get();
+                    allEvents = initialEvents;
+                    updateView();
+                    statusLabel.setText("Loaded " + initialEvents.size() + " events. Loading more...");
+                    loadMoreEvents();
+                } catch (InterruptedException | ExecutionException e) {
+                    statusLabel.setText("Error loading data: " + e.getMessage());
+                    e.printStackTrace();
                 }
-                return dashboardEvents;
+            }
+        }.execute();
+    }
+
+    private void loadMoreEvents() {
+        new SwingWorker<List<DashboardEvent>, Void>() {
+            @Override
+            protected List<DashboardEvent> doInBackground() throws Exception {
+                return dashboardService.getDashboardEvents(200);
             }
 
             @Override
@@ -220,7 +266,7 @@ public class DashboardView extends JPanel {
                     updateView();
                     statusLabel.setText("Dashboard updated. " + allEvents.size() + " events found.");
                 } catch (InterruptedException | ExecutionException e) {
-                    statusLabel.setText("Error loading data: " + e.getMessage());
+                    statusLabel.setText("Error loading more data: " + e.getMessage());
                     e.printStackTrace();
                 }
             }
@@ -271,7 +317,13 @@ public class DashboardView extends JPanel {
     }
 
     private void showAddEventDialog() {
-        new AddEventDialog((Frame) SwingUtilities.getWindowAncestor(this), calendarService, this::loadDashboardData).setVisible(true);
+        new AddEventDialog((Frame) SwingUtilities.getWindowAncestor(this), calendarService, newEvent -> {
+            DashboardEvent de = new DashboardEvent(newEvent, null);
+            allEvents.add(de);
+            allEvents.sort((e1, e2) -> e1.getCalendarEvent().getStartTime().compareTo(e2.getCalendarEvent().getStartTime()));
+            updateView();
+            statusLabel.setText("Event added. Total events: " + allEvents.size());
+        }).setVisible(true);
     }
 
     private void showEditEventDialog(CalendarEvent event) {
@@ -286,10 +338,11 @@ public class DashboardView extends JPanel {
 
     private void renderListView() {
         listViewContainer.removeAll();
-        if (allEvents.isEmpty()) {
+        List<DashboardEvent> eventsToRender = getFilteredEvents();
+        if (eventsToRender.isEmpty()) {
             listViewContainer.add(new JLabel("No events found."));
         } else {
-            for (DashboardEvent de : allEvents) {
+            for (DashboardEvent de : eventsToRender) {
                 listViewContainer.add(createEventCard(de));
                 listViewContainer.add(Box.createRigidArea(new Dimension(0, 10)));
             }
@@ -299,157 +352,15 @@ public class DashboardView extends JPanel {
     }
 
     private void renderDayView() {
-        dayViewContainer.removeAll();
-        List<DashboardEvent> dayEvents = allEvents.stream()
-                .filter(e -> e.getCalendarEvent().getStartTime().toLocalDate().equals(currentDate))
-                .collect(Collectors.toList());
-
-        if (dayEvents.isEmpty()) {
-            JLabel empty = new JLabel("No events for " + currentDate);
-            empty.setAlignmentX(Component.CENTER_ALIGNMENT);
-            dayViewContainer.add(Box.createVerticalGlue());
-            dayViewContainer.add(empty);
-            dayViewContainer.add(Box.createVerticalGlue());
-        } else {
-            for (DashboardEvent de : dayEvents) {
-                dayViewContainer.add(createEventCard(de));
-                dayViewContainer.add(Box.createRigidArea(new Dimension(0, 10)));
-            }
-        }
-        dayViewContainer.revalidate();
-        dayViewContainer.repaint();
+        dayViewPanel.render(getFilteredEvents(), currentDate, this::showEditEventDialog);
     }
 
     private void renderWeekView() {
-        weekViewContainer.removeAll();
-        LocalDate startOfWeek = currentDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-        
-        for (int i = 0; i < 7; i++) {
-            LocalDate day = startOfWeek.plusDays(i);
-            JPanel dayCol = new JPanel();
-            dayCol.setLayout(new BoxLayout(dayCol, BoxLayout.Y_AXIS));
-            dayCol.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, Color.LIGHT_GRAY));
-            
-            // Header
-            JLabel header = new JLabel(day.format(DateTimeFormatter.ofPattern("EEE dd")));
-            header.setAlignmentX(Component.CENTER_ALIGNMENT);
-            header.setFont(new Font("Arial", Font.BOLD, 12));
-            dayCol.add(header);
-            dayCol.add(Box.createRigidArea(new Dimension(0, 5)));
-            
-            // Events
-            List<DashboardEvent> dayEvents = allEvents.stream()
-                    .filter(e -> e.getCalendarEvent().getStartTime().toLocalDate().equals(day))
-                    .collect(Collectors.toList());
-            
-            for (DashboardEvent de : dayEvents) {
-                JPanel miniCard = new JPanel(new BorderLayout());
-                Color eventColor = getEventColor(de.getCalendarEvent().getColorId());
-                // Use a lighter version of the color for background
-                Color bgColor = new Color(eventColor.getRed(), eventColor.getGreen(), eventColor.getBlue(), 50);
-                miniCard.setBackground(bgColor);
-                miniCard.setBorder(BorderFactory.createMatteBorder(0, 3, 0, 0, eventColor));
-                miniCard.setMaximumSize(new Dimension(Integer.MAX_VALUE, 60));
-                
-                JLabel time = new JLabel(de.getCalendarEvent().getStartTime().format(DateTimeFormatter.ofPattern("HH:mm")));
-                time.setFont(new Font("Arial", Font.PLAIN, 10));
-                JLabel title = new JLabel(de.getCalendarEvent().getSummary());
-                title.setFont(new Font("Arial", Font.BOLD, 11));
-                
-                miniCard.add(time, BorderLayout.NORTH);
-                miniCard.add(title, BorderLayout.CENTER);
-                
-                if (de.getWeatherForecast() != null) {
-                    JLabel w = new JLabel(de.getWeatherForecast().getConditionIcon());
-                    miniCard.add(w, BorderLayout.EAST);
-                }
-                
-                dayCol.add(miniCard);
-                dayCol.add(Box.createRigidArea(new Dimension(0, 2)));
-            }
-            
-            weekViewContainer.add(dayCol);
-        }
-        weekViewContainer.revalidate();
-        weekViewContainer.repaint();
+        weekViewPanel.render(getFilteredEvents(), currentDate, this::showEditEventDialog);
     }
 
     private void renderMonthView() {
-        monthViewContainer.removeAll();
-        
-        // Header Row (Mon, Tue, ...)
-        JPanel headerPanel = new JPanel(new GridLayout(1, 7));
-        String[] days = {"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"};
-        for (String d : days) {
-            JLabel l = new JLabel(d, SwingConstants.CENTER);
-            l.setFont(new Font("Arial", Font.BOLD, 12));
-            headerPanel.add(l);
-        }
-        monthViewContainer.add(headerPanel, BorderLayout.NORTH);
-        
-        // Grid
-        JPanel gridPanel = new JPanel(new GridLayout(0, 7));
-        YearMonth yearMonth = YearMonth.from(currentDate);
-        LocalDate firstOfMonth = yearMonth.atDay(1);
-        int daysInMonth = yearMonth.lengthOfMonth();
-        int dayOfWeek = firstOfMonth.getDayOfWeek().getValue(); // 1=Mon, 7=Sun
-        
-        // Empty cells before 1st
-        for (int i = 1; i < dayOfWeek; i++) {
-            gridPanel.add(new JLabel(""));
-        }
-        
-        // Days
-        for (int day = 1; day <= daysInMonth; day++) {
-            LocalDate date = yearMonth.atDay(day);
-            JPanel cell = new JPanel(new BorderLayout());
-            cell.setBorder(BorderFactory.createLineBorder(Color.LIGHT_GRAY));
-            cell.setBackground(Color.WHITE);
-            
-            // Date Number
-            JLabel num = new JLabel(" " + day);
-            cell.add(num, BorderLayout.NORTH);
-            
-            // Events Container
-            JPanel eventsList = new JPanel();
-            eventsList.setLayout(new BoxLayout(eventsList, BoxLayout.Y_AXIS));
-            eventsList.setOpaque(false);
-            
-            List<DashboardEvent> dayEvents = allEvents.stream()
-                    .filter(e -> e.getCalendarEvent().getStartTime().toLocalDate().equals(date))
-                    .collect(Collectors.toList());
-            
-            // Show max 3 events to fit
-            for (int k = 0; k < Math.min(dayEvents.size(), 3); k++) {
-                DashboardEvent de = dayEvents.get(k);
-                JLabel evLabel = new JLabel("• " + de.getCalendarEvent().getSummary());
-                evLabel.setFont(new Font("Arial", Font.PLAIN, 10));
-                evLabel.setForeground(getEventColor(de.getCalendarEvent().getColorId()));
-                eventsList.add(evLabel);
-            }
-            if (dayEvents.size() > 3) {
-                eventsList.add(new JLabel(" + " + (dayEvents.size() - 3) + " more"));
-            }
-            
-            cell.add(eventsList, BorderLayout.CENTER);
-            
-            // Weather (Bottom Right)
-            // We can try to find weather for this date from our events or fetch it?
-            // Currently we only have weather attached to events. 
-            // If there is an event with weather, show it.
-            DashboardEvent weatherEvent = dayEvents.stream().filter(e -> e.getWeatherForecast() != null).findFirst().orElse(null);
-            if (weatherEvent != null) {
-                JLabel w = new JLabel(weatherEvent.getWeatherForecast().getConditionIcon() + " ");
-                w.setHorizontalAlignment(SwingConstants.RIGHT);
-                cell.add(w, BorderLayout.SOUTH);
-            }
-            
-            gridPanel.add(cell);
-        }
-        
-        monthViewContainer.add(gridPanel, BorderLayout.CENTER);
-        monthViewContainer.revalidate();
-        monthViewContainer.repaint();
+        monthViewPanel.render(getFilteredEvents(), currentDate, this::showEditEventDialog);
     }
 
     private JPanel createEventCard(DashboardEvent de) {
@@ -498,10 +409,21 @@ public class DashboardView extends JPanel {
         JLabel locLabel = new JLabel(locStr);
         locLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         locLabel.setForeground(Color.DARK_GRAY);
-        locLabel.setIcon(UIManager.getIcon("FileView.directoryIcon")); // Placeholder icon if available, or remove
-        
+        // Icon removed as per request
+
         centerPanel.add(titleLabel);
         centerPanel.add(locLabel);
+        
+        // Add Description if available
+        String desc = de.getCalendarEvent().getDescription();
+        if (desc != null && !desc.isEmpty()) {
+            JLabel descLabel = new JLabel(desc);
+            descLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+            descLabel.setForeground(Color.GRAY);
+            centerPanel.add(descLabel);
+            // Adjust grid layout to accommodate description
+            ((GridLayout)centerPanel.getLayout()).setRows(3);
+        }
 
         // Right: Weather & Edit
         JPanel rightPanel = new JPanel(new BorderLayout());
@@ -543,4 +465,44 @@ public class DashboardView extends JPanel {
 
         return card;
     }
+
+    private void filterEvents() {
+        String query = searchField.getText().toLowerCase();
+        List<DashboardEvent> filteredEvents = allEvents.stream()
+                .filter(de -> de.getCalendarEvent().getSummary().toLowerCase().contains(query) ||
+                              (de.getCalendarEvent().getDescription() != null && de.getCalendarEvent().getDescription().toLowerCase().contains(query)) ||
+                              (de.getCalendarEvent().getEventLocation() != null && de.getCalendarEvent().getEventLocation().toString().toLowerCase().contains(query)))
+                .collect(Collectors.toList());
+
+        // Update the view with filtered events
+        if ("List All".equals(viewSelector.getSelectedItem())) {
+            listViewContainer.removeAll();
+            if (filteredEvents.isEmpty()) {
+                listViewContainer.add(new JLabel("No events found."));
+            } else {
+                for (DashboardEvent de : filteredEvents) {
+                    listViewContainer.add(createEventCard(de));
+                    listViewContainer.add(Box.createRigidArea(new Dimension(0, 10)));
+                }
+            }
+            listViewContainer.revalidate();
+            listViewContainer.repaint();
+        } else {
+            // For other views, we may want to show a message or handle differently
+            statusLabel.setText(filteredEvents.size() + " events found matching your search.");
+        }
+    }
+
+    private List<DashboardEvent> getFilteredEvents() {
+        String query = searchField.getText().toLowerCase().trim();
+        if (query.isEmpty()) {
+            return allEvents;
+        }
+        return allEvents.stream()
+                .filter(e -> e.getCalendarEvent().getSummary().toLowerCase().contains(query) ||
+                        (e.getCalendarEvent().getDescription() != null && e.getCalendarEvent().getDescription().toLowerCase().contains(query)))
+                .collect(Collectors.toList());
+    }
+    
+    // Inner classes removed and extracted to com.aurora.climatesync.view.component
 }

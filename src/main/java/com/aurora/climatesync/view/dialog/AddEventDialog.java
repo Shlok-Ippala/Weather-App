@@ -10,13 +10,14 @@ import java.awt.*;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
+import java.util.function.Consumer;
+
 
 public class AddEventDialog extends JDialog {
     private final CalendarService calendarService;
-    private final Runnable onSuccess;
+    private final Consumer<CalendarEvent> onSuccess;
 
-    public AddEventDialog(Frame owner, CalendarService calendarService, Runnable onSuccess) {
+    public AddEventDialog(Frame owner, CalendarService calendarService, Consumer<CalendarEvent> onSuccess) {
         super(owner, "Add Event", true);
         this.calendarService = calendarService;
         this.onSuccess = onSuccess;
@@ -39,11 +40,11 @@ public class AddEventDialog extends JDialog {
         JTextField descField = new JTextField(20);
         JTextField locField = new JTextField(20);
         
-        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
-        JTextField startField = new JTextField(LocalDateTime.now().plusHours(1).format(fmt), 20);
-        JTextField endField = new JTextField(LocalDateTime.now().plusHours(2).format(fmt), 20);
+        DateTimePicker startPicker = new DateTimePicker(LocalDateTime.now().plusHours(1));
+        DateTimePicker endPicker = new DateTimePicker(LocalDateTime.now().plusHours(2));
         
         JComboBox<String> colorCombo = new JComboBox<>(EventColorUtil.COLOR_NAMES);
+        colorCombo.setRenderer(new ColorListCellRenderer());
         colorCombo.setSelectedIndex(6); // Default to Peacock
 
         // Helper to add rows
@@ -51,8 +52,8 @@ public class AddEventDialog extends JDialog {
         addFormRow(formPanel, gbc, row++, "Title:", titleField);
         addFormRow(formPanel, gbc, row++, "Description:", descField);
         addFormRow(formPanel, gbc, row++, "Location:", locField);
-        addFormRow(formPanel, gbc, row++, "Start (yyyy-MM-dd HH:mm):", startField);
-        addFormRow(formPanel, gbc, row++, "End (yyyy-MM-dd HH:mm):", endField);
+        addFormRow(formPanel, gbc, row++, "Start:", startPicker);
+        addFormRow(formPanel, gbc, row++, "End:", endPicker);
         addFormRow(formPanel, gbc, row++, "Color:", colorCombo);
 
         add(formPanel, BorderLayout.CENTER);
@@ -75,8 +76,8 @@ public class AddEventDialog extends JDialog {
                 String desc = descField.getText();
                 String loc = locField.getText();
                 
-                LocalDateTime startLdt = LocalDateTime.parse(startField.getText(), fmt);
-                LocalDateTime endLdt = LocalDateTime.parse(endField.getText(), fmt);
+                LocalDateTime startLdt = startPicker.getDateTime();
+                LocalDateTime endLdt = endPicker.getDateTime();
                 
                 ZonedDateTime startZdt = startLdt.atZone(ZoneId.systemDefault());
                 ZonedDateTime endZdt = endLdt.atZone(ZoneId.systemDefault());
@@ -89,9 +90,9 @@ public class AddEventDialog extends JDialog {
                         selectedColorId
                 );
                 
-                calendarService.addEvent(newEvent);
+                CalendarEvent createdEvent = calendarService.addEvent(newEvent);
                 dispose();
-                if (onSuccess != null) onSuccess.run();
+                if (onSuccess != null) onSuccess.accept(createdEvent);
                 JOptionPane.showMessageDialog(this, "Event added successfully!");
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(this, "Error adding event: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);

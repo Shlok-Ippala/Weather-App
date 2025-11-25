@@ -1,7 +1,6 @@
 package com.aurora.climatesync.service;
 
 import com.aurora.climatesync.model.CalendarEvent;
-import com.aurora.climatesync.model.Location;
 import org.springframework.stereotype.Service;
 
 import com.google.api.client.auth.oauth2.Credential;
@@ -12,11 +11,7 @@ import com.google.api.services.calendar.Calendar;
 import com.google.api.services.calendar.model.Event;
 import com.google.api.services.calendar.model.Events;
 
-import com.google.api.services.calendar.model.EventDateTime;
 import java.io.IOException;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.List;
 
@@ -24,11 +19,13 @@ import java.util.List;
 public class GoogleCalendarServiceImpl implements CalendarService {
     private static final String APPLICATION_NAME = "ClimateSync";
 
-    private Calendar client;
+    Calendar client;
     private final GoogleCredentialManager credentialManager;
+    private final GoogleEventMapper eventMapper;
 
-    public GoogleCalendarServiceImpl(GoogleCredentialManager credentialManager) {
+    public GoogleCalendarServiceImpl(GoogleCredentialManager credentialManager, GoogleEventMapper eventMapper) {
         this.credentialManager = credentialManager;
+        this.eventMapper = eventMapper;
     }
 
     @Override
@@ -45,36 +42,14 @@ public class GoogleCalendarServiceImpl implements CalendarService {
     }
 
     @Override
-    public void addEvent(CalendarEvent calendarEvent) {
+    public CalendarEvent addEvent(CalendarEvent calendarEvent) {
         if (client == null) {
             throw new IllegalStateException("Calendar client is not connected.");
         }
         try {
-            Event event = new Event()
-                    .setSummary(calendarEvent.getSummary())
-                    .setDescription(calendarEvent.getDescription());
-
-            DateTime startDateTime = new DateTime(calendarEvent.getStartTime().toInstant().toEpochMilli());
-            EventDateTime start = new EventDateTime()
-                    .setDateTime(startDateTime)
-                    .setTimeZone(calendarEvent.getStartTime().getZone().toString());
-            event.setStart(start);
-
-            DateTime endDateTime = new DateTime(calendarEvent.getEndTime().toInstant().toEpochMilli());
-            EventDateTime end = new EventDateTime()
-                    .setDateTime(endDateTime)
-                    .setTimeZone(calendarEvent.getEndTime().getZone().toString());
-            event.setEnd(end);
-
-            if (calendarEvent.getEventLocation() != null) {
-                event.setLocation(calendarEvent.getEventLocation().toString());
-            }
-            
-            if (calendarEvent.getColorId() != null) {
-                event.setColorId(calendarEvent.getColorId());
-            }
-
-            client.events().insert("primary", event).execute();
+            Event event = eventMapper.mapToGoogleEvent(calendarEvent);
+            Event createdEvent = client.events().insert("primary", event).execute();
+            return eventMapper.mapToCalendarEvent(createdEvent);
         } catch (IOException e) {
             e.printStackTrace();
             throw new RuntimeException("Failed to add event to Google Calendar", e);
@@ -88,30 +63,7 @@ public class GoogleCalendarServiceImpl implements CalendarService {
         }
         try {
             Event event = client.events().get("primary", calendarEvent.getEventID()).execute();
-            
-            event.setSummary(calendarEvent.getSummary());
-            event.setDescription(calendarEvent.getDescription());
-            
-            if (calendarEvent.getColorId() != null) {
-                event.setColorId(calendarEvent.getColorId());
-            }
-
-            DateTime startDateTime = new DateTime(calendarEvent.getStartTime().toInstant().toEpochMilli());
-            EventDateTime start = new EventDateTime()
-                    .setDateTime(startDateTime)
-                    .setTimeZone(calendarEvent.getStartTime().getZone().toString());
-            event.setStart(start);
-
-            DateTime endDateTime = new DateTime(calendarEvent.getEndTime().toInstant().toEpochMilli());
-            EventDateTime end = new EventDateTime()
-                    .setDateTime(endDateTime)
-                    .setTimeZone(calendarEvent.getEndTime().getZone().toString());
-            event.setEnd(end);
-
-            if (calendarEvent.getEventLocation() != null) {
-                event.setLocation(calendarEvent.getEventLocation().toString());
-            }
-
+            eventMapper.updateGoogleEvent(event, calendarEvent);
             client.events().update("primary", event.getId(), event).execute();
         } catch (IOException e) {
             e.printStackTrace();
@@ -139,6 +91,11 @@ public class GoogleCalendarServiceImpl implements CalendarService {
 
     @Override
     public List<CalendarEvent> getUpcomingEvents() {
+        return getUpcomingEvents(25);
+    }
+
+    @Override
+    public List<CalendarEvent> getUpcomingEvents(int maxResults) {
         if (client == null) {
             System.out.println("GoogleCalendarServiceImpl: Client is null (not connected). Returning empty list.");
             return Collections.emptyList();
@@ -147,7 +104,7 @@ public class GoogleCalendarServiceImpl implements CalendarService {
             System.out.println("GoogleCalendarServiceImpl: Fetching events...");
             DateTime now = new DateTime(System.currentTimeMillis());
             Events events = client.events().list("primary")
-                    .setMaxResults(10)
+                    .setMaxResults(maxResults)
                     .setTimeMin(now)
                     .setOrderBy("startTime")
                     .setSingleEvents(true)
@@ -157,26 +114,7 @@ public class GoogleCalendarServiceImpl implements CalendarService {
             List<Event> items = events.getItems();
             if (items != null) {
                 for (Event event : items) {
-                    DateTime start = event.getStart().getDateTime();
-                    if (start == null) start = event.getStart().getDate();
-                    DateTime end = event.getEnd().getDateTime();
-                    if (end == null) end = event.getEnd().getDate();
-
-                    ZonedDateTime startTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(start.getValue()), ZoneId.systemDefault());
-                    ZonedDateTime endTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(end.getValue()), ZoneId.systemDefault());
-
-                    String locationStr = event.getLocation();
-                    if (locationStr == null) locationStr = "Unknown";
-
-                    calendarEvents.add(new CalendarEvent(
-                        event.getId(),
-                        event.getSummary(),
-                        event.getDescription(),
-                        startTime,
-                        endTime,
-                        new Location(locationStr, "Unknown", 0, 0), // Coordinates to be resolved by WeatherService
-                        event.getColorId()
-                    ));
+                    calendarEvents.add(eventMapper.mapToCalendarEvent(event));
                 }
             }
             return calendarEvents;
