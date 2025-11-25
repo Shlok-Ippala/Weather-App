@@ -11,10 +11,27 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
 public class WeatherServiceImpl implements WeatherService {
+
+    private final RestTemplate restTemplate;
+    private final String forecastApiUrl;
+    private final String geocodingApiUrl;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public WeatherServiceImpl(
+            RestTemplate restTemplate,
+            @Value("${weather.api.forecast-url}") String forecastApiUrl,
+            @Value("${weather.api.geocoding-url}") String geocodingApiUrl) {
+        this.restTemplate = restTemplate;
+        this.forecastApiUrl = forecastApiUrl;
+        this.geocodingApiUrl = geocodingApiUrl;
+    }
+
+
 
     /**
      * Main API-powered method that fetches a 7-day forecast
@@ -23,11 +40,9 @@ public class WeatherServiceImpl implements WeatherService {
     public List<WeatherForecast> getWeeklyForecast(double latitude, double longitude) {
 
         try {
-            RestTemplate restTemplate = new RestTemplate();
-
             // Open-Meteo API URL
             String url = UriComponentsBuilder
-                    .fromHttpUrl("https://api.open-meteo.com/v1/forecast")
+                    .fromUriString(forecastApiUrl)
                     .queryParam("latitude", latitude)
                     .queryParam("longitude", longitude)
                     .queryParam("daily",
@@ -88,6 +103,61 @@ public class WeatherServiceImpl implements WeatherService {
         return getWeeklyForecast(location.getLatitude(), location.getLongitude());
     }
 
+    @Override
+    public WeatherForecast getForecastForDate(Location location, LocalDate date) {
+        // 1. Resolve location if needed
+        if (location.getLatitude() == 0 && location.getLongitude() == 0) {
+             if (location.getCityName() != null && !location.getCityName().equals("Unknown") && !location.getCityName().isEmpty()) {
+                 resolveLocation(location);
+             } else {
+                 // No valid location info
+                 return null;
+             }
+        }
+        
+        // If resolution failed or was skipped, and we are still at 0,0 (Null Island), 
+        // we assume it's invalid unless the user really meant 0,0. 
+        // For this app, we'll treat 0,0 as invalid if it came from default initialization.
+        if (location.getLatitude() == 0 && location.getLongitude() == 0) {
+            return null;
+        }
+
+        // 2. Get weekly forecast
+        List<WeatherForecast> weekly = getWeeklyForecast(location.getLatitude(), location.getLongitude());
+
+        // 3. Find matching date
+        for (WeatherForecast f : weekly) {
+            if (f.getDate().equals(date)) {
+                return f;
+            }
+        }
+        return null; 
+    }
+
+    // Package-private for testing
+    void resolveLocation(Location location) {
+        try {
+            String url = UriComponentsBuilder
+                    .fromUriString(geocodingApiUrl)
+                    .queryParam("name", location.getCityName())
+                    .queryParam("count", 1)
+                    .queryParam("language", "en")
+                    .queryParam("format", "json")
+                    .toUriString();
+
+            String json = restTemplate.getForObject(url, String.class);
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode root = mapper.readTree(json);
+            
+            if (root.has("results") && root.get("results").isArray() && root.get("results").size() > 0) {
+                JsonNode result = root.get("results").get(0);
+                location.setLatitude(result.get("latitude").asDouble());
+                location.setLongitude(result.get("longitude").asDouble());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
     /**
      * Convert Open-Meteo weather codes → text.

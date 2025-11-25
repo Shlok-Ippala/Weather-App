@@ -8,3 +8,7 @@ spring.security.oauth2.client.registration.google.client-id=YOUR_CLIENT_ID_HERE
 spring.security.oauth2.client.registration.google.client-secret=YOUR_CLIENT_SECRET_HERE
 spring.security.oauth2.client.registration.google.scope=openid,email,profile,https://www.googleapis.com/auth/calendar.readonly
 spring.security.oauth2.client.registration.google.redirect-uri=http://localhost:8080/login/oauth2/code/google
+
+# Weather API
+weather.api.forecast-url=https://api.open-meteo.com/v1/forecast
+weather.api.geocoding-url=https://geocoding-api.open-meteo.com/v1/search

@@ -8,14 +8,20 @@ public class CalendarEvent {
     private ZonedDateTime startTime; // The start date and time, including timezone
     private ZonedDateTime endTime;   // The end date and time, including timezone
     private Location eventLocation;  // The Location object associated with the event
+    private String colorId;          // The color ID of the event
 
     public CalendarEvent(String eventID, String title, String description, ZonedDateTime startTime, ZonedDateTime endTime, Location eventLocation) {
+        this(eventID, title, description, startTime, endTime, eventLocation, null);
+    }
+
+    public CalendarEvent(String eventID, String title, String description, ZonedDateTime startTime, ZonedDateTime endTime, Location eventLocation, String colorId) {
         this.eventID = eventID;
         this.title = title;
         this.description = description;
         this.startTime = startTime;
         this.endTime = endTime;
         this.eventLocation = eventLocation;
+        this.colorId = colorId;
     }
 
     public String getEventID() {
@@ -40,5 +46,9 @@ public class CalendarEvent {
 
     public Location getEventLocation() {
         return eventLocation;
+    }
+
+    public String getColorId() {
+        return colorId;
     }
 }
