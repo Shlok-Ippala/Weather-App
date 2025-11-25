@@ -23,18 +23,18 @@ public class Main {
     private void launchUI() {
         JFrame frame = new JFrame("ClimateSync");
         frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-        frame.setSize(600, 500);
+        frame.setSize(800, 600); // Increased size for better calendar view
         frame.setLocationRelativeTo(null);
 
         JTabbedPane tabbedPane = new JTabbedPane();
 
+        // Home Tab (formerly Dashboard)
+        DashboardView dashboardView = new DashboardView(calendarService, weatherService);
+        tabbedPane.addTab("Home", dashboardView);
+
         // Weather Tab
         WeatherView weatherView = new WeatherView(weatherService);
         tabbedPane.addTab("Weather", weatherView);
-
-        // Calendar Tab
-        CalendarView calendarView = new CalendarView(calendarService);
-        tabbedPane.addTab("Calendar", calendarView);
 
         frame.add(tabbedPane);
         frame.setVisible(true);

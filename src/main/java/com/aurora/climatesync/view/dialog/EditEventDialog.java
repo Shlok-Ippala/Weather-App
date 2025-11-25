@@ -1,0 +1,139 @@
+package com.aurora.climatesync.view.dialog;
+
+import com.aurora.climatesync.model.CalendarEvent;
+import com.aurora.climatesync.model.Location;
+import com.aurora.climatesync.service.CalendarService;
+import com.aurora.climatesync.util.EventColorUtil;
+
+import javax.swing.*;
+import java.awt.*;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+
+public class EditEventDialog extends JDialog {
+    private final CalendarEvent event;
+    private final CalendarService calendarService;
+    private final Runnable onSuccess;
+
+    public EditEventDialog(Frame owner, CalendarEvent event, CalendarService calendarService, Runnable onSuccess) {
+        super(owner, "Edit Event", true);
+        this.event = event;
+        this.calendarService = calendarService;
+        this.onSuccess = onSuccess;
+        initializeUI();
+    }
+
+    private void initializeUI() {
+        setLayout(new BorderLayout(10, 10));
+        setSize(450, 450);
+        setLocationRelativeTo(getOwner());
+        ((JPanel)getContentPane()).setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+
+        // Form Panel
+        JPanel formPanel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+
+        JTextField titleField = new JTextField(event.getSummary(), 20);
+        JTextField descField = new JTextField(event.getDescription(), 20);
+        String locStr = event.getEventLocation() != null ? event.getEventLocation().getCityName() : "";
+        if (locStr == null) locStr = "";
+        JTextField locField = new JTextField(locStr, 20);
+        
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+        JTextField startField = new JTextField(event.getStartTime().format(fmt), 20);
+        JTextField endField = new JTextField(event.getEndTime().format(fmt), 20);
+        
+        JComboBox<String> colorCombo = new JComboBox<>(EventColorUtil.COLOR_NAMES);
+        colorCombo.setSelectedIndex(EventColorUtil.getColorIndex(event.getColorId()));
+
+        int row = 0;
+        addFormRow(formPanel, gbc, row++, "Title:", titleField);
+        addFormRow(formPanel, gbc, row++, "Description:", descField);
+        addFormRow(formPanel, gbc, row++, "Location:", locField);
+        addFormRow(formPanel, gbc, row++, "Start (yyyy-MM-dd HH:mm):", startField);
+        addFormRow(formPanel, gbc, row++, "End (yyyy-MM-dd HH:mm):", endField);
+        addFormRow(formPanel, gbc, row++, "Color:", colorCombo);
+
+        add(formPanel, BorderLayout.CENTER);
+
+        // Button Panel
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JButton cancelButton = new JButton("Cancel");
+        JButton deleteButton = new JButton("Delete");
+        JButton updateButton = new JButton("Update");
+        
+        // Style buttons
+        updateButton.setBackground(new Color(66, 133, 244));
+        updateButton.setForeground(Color.BLACK);
+        updateButton.setOpaque(true);
+        updateButton.setBorderPainted(false);
+        
+        deleteButton.setForeground(Color.RED);
+        
+        cancelButton.addActionListener(e -> dispose());
+        
+        updateButton.addActionListener(e -> {
+            try {
+                String title = titleField.getText();
+                String desc = descField.getText();
+                String loc = locField.getText();
+                LocalDateTime startLdt = LocalDateTime.parse(startField.getText(), fmt);
+                LocalDateTime endLdt = LocalDateTime.parse(endField.getText(), fmt);
+                
+                ZonedDateTime startZdt = startLdt.atZone(ZoneId.systemDefault());
+                ZonedDateTime endZdt = endLdt.atZone(ZoneId.systemDefault());
+                
+                String selectedColorId = EventColorUtil.COLOR_IDS[colorCombo.getSelectedIndex()];
+
+                CalendarEvent updatedEvent = new CalendarEvent(
+                        event.getEventID(), title, desc, startZdt, endZdt, 
+                        new Location(loc, "Unknown", 0, 0),
+                        selectedColorId
+                );
+                
+                calendarService.updateEvent(updatedEvent);
+                dispose();
+                if (onSuccess != null) onSuccess.run();
+                JOptionPane.showMessageDialog(this, "Event updated successfully!");
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Error updating event: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+        
+        deleteButton.addActionListener(e -> {
+            int confirm = JOptionPane.showConfirmDialog(this, "Are you sure you want to delete this event?", "Confirm Delete", JOptionPane.YES_NO_OPTION);
+            if (confirm == JOptionPane.YES_OPTION) {
+                try {
+                    calendarService.deleteEvent(event.getEventID());
+                    dispose();
+                    if (onSuccess != null) onSuccess.run();
+                    JOptionPane.showMessageDialog(this, "Event deleted successfully!");
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(this, "Error deleting event: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
+
+        buttonPanel.add(deleteButton);
+        buttonPanel.add(cancelButton);
+        buttonPanel.add(updateButton);
+        add(buttonPanel, BorderLayout.SOUTH);
+    }
+
+    private void addFormRow(JPanel panel, GridBagConstraints gbc, int row, String labelText, JComponent field) {
+        gbc.gridx = 0;
+        gbc.gridy = row;
+        gbc.weightx = 0.0;
+        gbc.anchor = GridBagConstraints.EAST;
+        panel.add(new JLabel(labelText), gbc);
+
+        gbc.gridx = 1;
+        gbc.weightx = 1.0;
+        gbc.anchor = GridBagConstraints.WEST;
+        panel.add(field, gbc);
+    }
+}

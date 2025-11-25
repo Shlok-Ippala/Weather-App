@@ -20,10 +20,18 @@ public class WeatherView extends JPanel {
         this.setLayout(new BorderLayout());
 
         // Input Panel
-        JPanel inputPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        cityField = new JTextField("Toronto", 10);
-        countryField = new JTextField("Canada", 10);
+        JPanel inputPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 15));
+        inputPanel.setBackground(new Color(245, 245, 245));
+        inputPanel.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, Color.LIGHT_GRAY));
+        
+        cityField = new JTextField("Toronto", 15);
+        countryField = new JTextField("Canada", 15);
         JButton fetchButton = new JButton("Fetch Forecast");
+        
+        fetchButton.setBackground(new Color(66, 133, 244));
+        fetchButton.setForeground(Color.BLACK);
+        fetchButton.setOpaque(true);
+        fetchButton.setBorderPainted(false);
 
         inputPanel.add(new JLabel("City:"));
         inputPanel.add(cityField);
@@ -34,14 +42,16 @@ public class WeatherView extends JPanel {
         // Forecast Panel
         forecastPanel = new JPanel();
         forecastPanel.setLayout(new BoxLayout(forecastPanel, BoxLayout.Y_AXIS));
-        forecastPanel.setBackground(new Color(220, 235, 255)); // light blue
+        forecastPanel.setBackground(Color.WHITE);
+        forecastPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
         // Status Label
         statusLabel = new JLabel("Ready.");
-        statusLabel.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
+        statusLabel.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
+        statusLabel.setFont(new Font("Segoe UI", Font.ITALIC, 12));
 
         this.add(inputPanel, BorderLayout.NORTH);
-        this.add(forecastPanel, BorderLayout.CENTER);
+        this.add(new JScrollPane(forecastPanel), BorderLayout.CENTER);
         this.add(statusLabel, BorderLayout.SOUTH);
 
         fetchButton.addActionListener(e -> fetchWeather());
