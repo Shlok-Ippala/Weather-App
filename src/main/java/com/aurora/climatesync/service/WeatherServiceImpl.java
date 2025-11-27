@@ -1,14 +1,14 @@
 package com.aurora.climatesync.service;
 
-import com.aurora.climatesync.exception.WeatherServiceException;
 import com.aurora.climatesync.model.Location;
 import com.aurora.climatesync.model.WeatherForecast;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -17,22 +17,18 @@ import org.springframework.stereotype.Service;
 @Service
 public class WeatherServiceImpl implements WeatherService {
 
-    private static final Logger logger = LoggerFactory.getLogger(WeatherServiceImpl.class);
     private final RestTemplate restTemplate;
     private final String forecastApiUrl;
     private final String geocodingApiUrl;
-    private final OpenMeteoParser parser;
 
     @org.springframework.beans.factory.annotation.Autowired
     public WeatherServiceImpl(
             RestTemplate restTemplate,
-            @Value("${weather.api.forecast-url}") String forecastApiUrl,
-            @Value("${weather.api.geocoding-url}") String geocodingApiUrl,
-            OpenMeteoParser parser) {
+            @Value("${weather.api.forecast-url:https://api.open-meteo.com/v1/forecast}") String forecastApiUrl,
+            @Value("${weather.api.geocoding-url:https://geocoding-api.open-meteo.com/v1/search}") String geocodingApiUrl) {
         this.restTemplate = restTemplate;
         this.forecastApiUrl = forecastApiUrl;
         this.geocodingApiUrl = geocodingApiUrl;
-        this.parser = parser;
     }
 
 
@@ -42,37 +38,90 @@ public class WeatherServiceImpl implements WeatherService {
      * using latitude + longitude from Open-Meteo API.
      */
     public List<WeatherForecast> getWeeklyForecast(double latitude, double longitude) {
-        logger.info("Fetching weekly forecast for lat: {}, lon: {}", latitude, longitude);
-        try {
-            String url = buildForecastUrl(latitude, longitude);
-            String jsonResponse = restTemplate.getForObject(url, String.class);
 
-            if (jsonResponse == null || jsonResponse.isEmpty()) {
-                throw new WeatherServiceException("Empty response from Weather API");
+        try {
+            // Open-Meteo API URL
+            String url = UriComponentsBuilder
+                    .fromUriString(forecastApiUrl)
+                    .queryParam("latitude", latitude)
+                    .queryParam("longitude", longitude)
+                    .queryParam("daily",
+                            "temperature_2m_max,temperature_2m_min,precipitation_probability_mean,weathercode")
+                    .queryParam("timezone", "auto")
+                    .toUriString();
+
+            // === Call API ===
+            String json = restTemplate.getForObject(url, String.class);
+
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode root = mapper.readTree(json);
+
+            if (root == null || !root.has("daily")) {
+                return new ArrayList<>();
             }
 
-            return parser.parseForecastResponse(jsonResponse);
-        } catch (Exception e) {
-            logger.error("Failed to fetch weather forecast", e);
-            throw new WeatherServiceException("Failed to fetch weather forecast", e);
+            JsonNode daily = root.get("daily");
+
+            JsonNode dates = daily.get("time");
+            JsonNode maxTemps = daily.get("temperature_2m_max");
+            JsonNode minTemps = daily.get("temperature_2m_min");
+            JsonNode precip = daily.get("precipitation_probability_mean");
+            JsonNode codes = daily.get("weathercode");
+
+            if (dates == null || !dates.isArray()) {
+                return new ArrayList<>();
+            }
+
+            int size = dates.size();
+            List<WeatherForecast> forecasts = new ArrayList<>();
+
+            int maxIndex = size;
+            if (maxTemps != null && maxTemps.isArray()) maxIndex = Math.min(maxIndex, maxTemps.size());
+            if (minTemps != null && minTemps.isArray()) maxIndex = Math.min(maxIndex, minTemps.size());
+            if (precip != null && precip.isArray()) maxIndex = Math.min(maxIndex, precip.size());
+            if (codes != null && codes.isArray()) maxIndex = Math.min(maxIndex, codes.size());
+            // === Loop and build WeatherForecast objects ===
+            
+            for (int i = 0; i < maxIndex; i++) {
+                LocalDate date = LocalDate.parse(dates.get(i).asText());
+                double maxT = maxTemps != null ? maxTemps.get(i).asDouble() : 0.0;
+                double minT = minTemps != null ? minTemps.get(i).asDouble() : 0.0;
+                double precipitationChance = precip != null ? (precip.get(i).asDouble() / 100.0) : 0.0;
+                int code = codes != null ? codes.get(i).asInt() : -1;
+
+                String condition = mapWeatherCode(code);
+
+                forecasts.add(new WeatherForecast(
+                        date,
+                        maxT,
+                        minT,
+                        condition,
+                        precipitationChance,
+                        0  // add real wind speed later
+                ));
+            }
+
+            return forecasts;
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+            return new ArrayList<>();
         }
     }
 
-    private String buildForecastUrl(double latitude, double longitude) {
-        return UriComponentsBuilder
-                .fromUriString(forecastApiUrl)
-                .queryParam("latitude", latitude)
-                .queryParam("longitude", longitude)
-                .queryParam("daily", "temperature_2m_max,temperature_2m_min,precipitation_probability_mean,weathercode")
-                .queryParam("timezone", "auto")
-                .toUriString();
-    }
 
     /**
      * GUI wrapper: Accepts a Location object,
      * extracts lat/long, and calls the API version.
      */
     public List<WeatherForecast> getWeeklyForecast(Location location) {
+        // If coordinates are missing, try to resolve them first
+        if ((location.getLatitude() == 0.0 && location.getLongitude() == 0.0)
+                && location.getCityName() != null && !location.getCityName().isEmpty()
+                && !location.getCityName().equalsIgnoreCase("Unknown")) {
+            resolveLocation(location);
+        }
+
         return getWeeklyForecast(location.getLatitude(), location.getLongitude());
     }
 
@@ -115,13 +164,48 @@ public class WeatherServiceImpl implements WeatherService {
                     .queryParam("name", location.getCityName())
                     .queryParam("count", 1)
                     .queryParam("language", "en")
-                    .queryParam("format", "json")
                     .toUriString();
 
             String json = restTemplate.getForObject(url, String.class);
-            parser.parseGeocodingResponse(json, location);
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode root = mapper.readTree(json);
+            
+            if (root.has("results") && root.get("results").isArray() && root.get("results").size() > 0) {
+                JsonNode result = root.get("results").get(0);
+                if (result.has("latitude") && result.has("longitude")) {
+                    location.setLatitude(result.get("latitude").asDouble());
+                    location.setLongitude(result.get("longitude").asDouble());
+                }
+            }
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+
+    /**
+     * Convert Open-Meteo weather codes → text.
+     */
+    private String mapWeatherCode(int code) {
+        switch (code) {
+            case 0: return "Clear";
+            case 1:
+            case 2:
+            case 3: return "Cloudy";
+            case 45:
+            case 48: return "Fog";
+            case 51:
+            case 53:
+            case 55: return "Drizzle";
+            case 61:
+            case 63:
+            case 65: return "Rainy";
+            case 71:
+            case 73:
+            case 75: return "Snow";
+            case 95:
+            case 96:
+            case 99: return "Thunderstorm";
+            default: return "Unknown";
         }
     }
 }

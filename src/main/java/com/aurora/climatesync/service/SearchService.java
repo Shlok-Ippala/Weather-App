@@ -37,13 +37,18 @@ public class SearchService {
         }
 
         String q= query.trim().toLowerCase();
+
+        if (q.contains("virtual") || q.contains("online")) {
+            return new ArrayList<>();
+        }
+
         int count = (maxResults > 0 && maxResults <=100) ? maxResults : 100;
 
         try{
-            String urlString = "https://geocoding-api.open-meteo.com/v1/search?name=" +
+            String urlString = "https://geocoding-api.open-meteo.com/v1/search?q=" +
                     URLEncoder.encode(q, StandardCharsets.UTF_8) +
                     "&count=" + count +
-                    "&language=en";
+                    "&language=en&format=json";
 
             JSONObject json = makeHttpRequest(urlString);
 
@@ -57,12 +62,16 @@ public class SearchService {
             for(int i = 0; i < results.length(); i++){
                 JSONObject obj = results.getJSONObject(i);
 
-                String cityName = obj.getString("name");
-                String country = obj.getString("country");
-                double latitude = obj.getDouble("latitude");
-                double longitude = obj.getDouble("longitude");
+                String cityName = obj.optString("name", "Unknown City");
+                String country = obj.optString("country", "Unknown Country");
+                double latitude = obj.optDouble("latitude", 0.0);
+                double longitude = obj.optDouble("longitude", 0.0);
 
-                locations.add(new Location(cityName, country, latitude, longitude));
+                if (latitude == 0.0 && longitude == 0.0) {
+                    locations.add(Location.unknown());
+                } else {
+                    locations.add(new Location(cityName, country, latitude, longitude));
+                }
             }
             return locations;
 
@@ -78,12 +87,12 @@ public class SearchService {
 
     public Location getTopLocation(String query){
         List<Location> results = searchLocations(query, 1);
-        return results.isEmpty() ? null : results.get(0);
+        return results.isEmpty() ? Location.unknown() : results.get(0);
     }
 
     public List<WeatherForecast> searchAndGetWeeklyForecast(String query){
         Location location = getTopLocation(query);
-        if(location == null) {
+        if(location.isUnknown()) {
             return new ArrayList<>();
         }
 

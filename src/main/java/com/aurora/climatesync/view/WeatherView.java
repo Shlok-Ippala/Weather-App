@@ -74,7 +74,9 @@ public class WeatherView extends JPanel {
         // Run in background to avoid freezing UI
         new Thread(() -> {
             try {
-                Location location = new Location(city, country, 43.6532, -79.3832);
+                // Create Location without hardcoded coordinates so the service
+                // will resolve coordinates from the city/country before fetching.
+                Location location = new Location(city, country, 0.0, 0.0);
                 List<WeatherForecast> forecasts = weatherService.getWeeklyForecast(location);
                 
                 SwingUtilities.invokeLater(() -> {

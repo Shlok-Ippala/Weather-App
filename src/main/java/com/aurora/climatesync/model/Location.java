@@ -50,11 +50,16 @@ public class Location {
         this.longitude = longitude;
     }
 
+    public static Location unknown() {
+        return new Location("Unknown City", "Unknown Country", 0.0, 0.0);
+    }
+
+    public boolean isUnknown() {
+        return latitude == 0.0 && longitude == 0.0;
+    }
+
     @Override
     public String toString() {
-        if (country == null || country.equalsIgnoreCase("Unknown") || country.isEmpty()) {
-            return cityName;
-        }
         return cityName + ", " + country;
     }
 
@@ -71,6 +76,8 @@ public class Location {
 
     @Override
     public int hashCode() {
-        return Objects.hash(cityName.toLowerCase(), country.toLowerCase(), latitude, longitude);
+        String city = cityName == null ? "" : cityName.toLowerCase();
+        String ctry = country == null ? "" : country.toLowerCase();
+        return Objects.hash(city, ctry, latitude, longitude);
     }
 }
