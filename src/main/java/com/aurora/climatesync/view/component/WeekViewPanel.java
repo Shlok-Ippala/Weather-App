@@ -1,6 +1,6 @@
 package com.aurora.climatesync.view.component;
 
-import com.aurora.climatesync.model.DashboardEvent;
+import com.aurora.climatesync.presenter.DashboardViewModel;
 import com.aurora.climatesync.model.CalendarEvent;
 
 import javax.swing.*;
@@ -22,7 +22,7 @@ public class WeekViewPanel extends JPanel {
         add(new JScrollPane(contentPanel), BorderLayout.CENTER);
     }
 
-    public void render(List<DashboardEvent> events, LocalDate currentDate, Consumer<CalendarEvent> onEventClick) {
+    public void render(List<DashboardViewModel> events, LocalDate currentDate, Consumer<CalendarEvent> onEventClick) {
         contentPanel.removeAll();
         LocalDate startOfWeek = currentDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
         
@@ -38,8 +38,8 @@ public class WeekViewPanel extends JPanel {
             dayCol.add(header, BorderLayout.NORTH);
             
             // Events
-            List<DashboardEvent> dayEvents = events.stream()
-                    .filter(e -> e.getCalendarEvent().getStartTime().toLocalDate().equals(day))
+            List<DashboardViewModel> dayEvents = events.stream()
+                    .filter(e -> e.getStartTime().toLocalDate().equals(day))
                     .collect(Collectors.toList());
             
             TimeBlockPanel timePanel = new TimeBlockPanel(dayEvents, i == 0, onEventClick);

@@ -1,8 +1,9 @@
 package com.aurora.climatesync.view.component;
 
 import com.aurora.climatesync.model.CalendarEvent;
-import com.aurora.climatesync.model.DashboardEvent;
+import com.aurora.climatesync.presenter.DashboardViewModel;
 import com.aurora.climatesync.util.EventColorUtil;
+import com.aurora.climatesync.util.WeatherIconMapper;
 
 import javax.swing.*;
 import java.awt.*;
@@ -18,7 +19,7 @@ public class TimeBlockPanel extends JPanel {
     private final boolean showTimeLabels;
     private final Consumer<CalendarEvent> onEventClick;
 
-    public TimeBlockPanel(List<DashboardEvent> events, boolean showTimeLabels, Consumer<CalendarEvent> onEventClick) {
+    public TimeBlockPanel(List<DashboardViewModel> events, boolean showTimeLabels, Consumer<CalendarEvent> onEventClick) {
         this.showTimeLabels = showTimeLabels;
         this.onEventClick = onEventClick;
         this.setLayout(null);
@@ -27,7 +28,7 @@ public class TimeBlockPanel extends JPanel {
         // 24 * HOUR_HEIGHT + padding
         this.setPreferredSize(new Dimension(0, 24 * HOUR_HEIGHT + 20));
 
-        for (DashboardEvent de : events) {
+        for (DashboardViewModel de : events) {
             addEventCard(de);
         }
     }
@@ -77,23 +78,22 @@ public class TimeBlockPanel extends JPanel {
         return (hour - 12) + " PM";
     }
 
-    private void addEventCard(DashboardEvent de) {
-        CalendarEvent event = de.getCalendarEvent();
-        LocalTime start = event.getStartTime().toLocalTime();
-        LocalTime end = event.getEndTime().toLocalTime();
+    private void addEventCard(DashboardViewModel de) {
+        LocalTime start = de.getStartTime().toLocalTime();
+        LocalTime end = de.getEndTime().toLocalTime();
 
         int startY = start.getHour() * HOUR_HEIGHT + start.getMinute();
         int endY = end.getHour() * HOUR_HEIGHT + end.getMinute();
 
         // Handle events spanning across days (simplified: clip to end of day)
-        if (event.getEndTime().toLocalDate().isAfter(event.getStartTime().toLocalDate())) {
+        if (de.getEndTime().toLocalDate().isAfter(de.getStartTime().toLocalDate())) {
             endY = 24 * HOUR_HEIGHT;
         }
 
         int height = Math.max(25, endY - startY);
 
         JPanel card = new JPanel(new BorderLayout());
-        Color eventColor = EventColorUtil.getEventColor(event.getColorId());
+        Color eventColor = EventColorUtil.getEventColor(de.getColorId());
         card.setBackground(new Color(eventColor.getRed(), eventColor.getGreen(), eventColor.getBlue(), 50));
         card.setBorder(BorderFactory.createMatteBorder(0, 4, 0, 0, eventColor));
 
@@ -101,15 +101,23 @@ public class TimeBlockPanel extends JPanel {
         content.setOpaque(false);
         content.setBorder(BorderFactory.createEmptyBorder(2, 5, 2, 2));
 
-        JLabel title = new JLabel(event.getSummary());
+        JLabel title = new JLabel(de.getTitle());
         title.setFont(new Font("Arial", Font.BOLD, 11));
         content.add(title);
 
-        if (event.getEventLocation() != null && event.getEventLocation().getCityName() != null) {
-            JLabel loc = new JLabel("📍 " + event.getEventLocation().getCityName());
+        if (de.getLocation() != null) {
+            JLabel loc = new JLabel("\uD83D\uDCCD " + de.getLocation());
             loc.setFont(new Font("Arial", Font.PLAIN, 9));
             loc.setForeground(Color.DARK_GRAY);
             content.add(loc);
+        }
+
+        // Add weather info if available
+        if (de.getWeatherIcon() != null && de.getTemperatureDisplay() != null) {
+            JLabel weatherLabel = new JLabel(de.getWeatherIcon() + " " + de.getTemperatureDisplay());
+            weatherLabel.setFont(new Font("Arial", Font.PLAIN, 9));
+            weatherLabel.setForeground(new Color(0, 102, 204)); // Dark blue for weather
+            content.add(weatherLabel);
         }
 
         card.add(content, BorderLayout.CENTER);
@@ -118,8 +126,8 @@ public class TimeBlockPanel extends JPanel {
         card.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                if (onEventClick != null) {
-                    onEventClick.accept(event);
+                if (onEventClick != null && de.getSourceEvent() instanceof CalendarEvent) {
+                    onEventClick.accept((CalendarEvent) de.getSourceEvent());
                 }
             }
         });

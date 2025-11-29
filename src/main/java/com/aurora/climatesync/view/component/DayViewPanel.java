@@ -1,6 +1,6 @@
 package com.aurora.climatesync.view.component;
 
-import com.aurora.climatesync.model.DashboardEvent;
+import com.aurora.climatesync.presenter.DashboardViewModel;
 import com.aurora.climatesync.model.CalendarEvent;
 
 import javax.swing.*;
@@ -20,10 +20,10 @@ public class DayViewPanel extends JPanel {
         add(new JScrollPane(contentPanel), BorderLayout.CENTER);
     }
 
-    public void render(List<DashboardEvent> events, LocalDate date, Consumer<CalendarEvent> onEventClick) {
+    public void render(List<DashboardViewModel> events, LocalDate date, Consumer<CalendarEvent> onEventClick) {
         contentPanel.removeAll();
-        List<DashboardEvent> dayEvents = events.stream()
-                .filter(e -> e.getCalendarEvent().getStartTime().toLocalDate().equals(date))
+        List<DashboardViewModel> dayEvents = events.stream()
+                .filter(e -> e.getStartTime().toLocalDate().equals(date))
                 .collect(Collectors.toList());
 
         if (dayEvents.isEmpty()) {

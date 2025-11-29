@@ -1,6 +1,6 @@
 package com.aurora.climatesync.view.component;
 
-import com.aurora.climatesync.model.DashboardEvent;
+import com.aurora.climatesync.presenter.DashboardViewModel;
 import com.aurora.climatesync.model.CalendarEvent;
 import com.aurora.climatesync.util.EventColorUtil;
 
@@ -24,7 +24,7 @@ public class MonthViewPanel extends JPanel {
         add(new JScrollPane(contentPanel), BorderLayout.CENTER);
     }
 
-    public void render(List<DashboardEvent> events, LocalDate currentDate, Consumer<CalendarEvent> onEventClick) {
+    public void render(List<DashboardViewModel> events, LocalDate currentDate, Consumer<CalendarEvent> onEventClick) {
         contentPanel.removeAll();
         
         // Header Row (Mon, Tue, ...)
@@ -65,23 +65,31 @@ public class MonthViewPanel extends JPanel {
             eventsList.setLayout(new BoxLayout(eventsList, BoxLayout.Y_AXIS));
             eventsList.setOpaque(false);
             
-            List<DashboardEvent> dayEvents = events.stream()
-                    .filter(e -> e.getCalendarEvent().getStartTime().toLocalDate().equals(date))
+            List<DashboardViewModel> dayEvents = events.stream()
+                    .filter(e -> e.getStartTime().toLocalDate().equals(date))
                     .collect(Collectors.toList());
             
             // Show max 3 events to fit
             for (int k = 0; k < Math.min(dayEvents.size(), 3); k++) {
-                DashboardEvent de = dayEvents.get(k);
-                String timeStr = de.getCalendarEvent().getStartTime().format(DateTimeFormatter.ofPattern("ha")).toLowerCase();
-                JLabel evLabel = new JLabel("• " + timeStr + " " + de.getCalendarEvent().getSummary());
+                DashboardViewModel de = dayEvents.get(k);
+                String timeStr = de.getStartTime().format(DateTimeFormatter.ofPattern("ha")).toLowerCase();
+                
+                String weatherIcon = "";
+                if (de.getWeatherIcon() != null) {
+                    weatherIcon = " " + de.getWeatherIcon();
+                }
+
+                JLabel evLabel = new JLabel("• " + timeStr + " " + de.getTitle() + weatherIcon);
                 evLabel.setFont(new Font("Arial", Font.PLAIN, 10));
-                evLabel.setForeground(EventColorUtil.getEventColor(de.getCalendarEvent().getColorId()));
+                evLabel.setForeground(EventColorUtil.getEventColor(de.getColorId()));
                 
                 evLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
                 evLabel.addMouseListener(new MouseAdapter() {
                     @Override
                     public void mouseClicked(MouseEvent e) {
-                        onEventClick.accept(de.getCalendarEvent());
+                        if (de.getSourceEvent() instanceof CalendarEvent) {
+                            onEventClick.accept((CalendarEvent) de.getSourceEvent());
+                        }
                     }
                 });
                 
@@ -94,9 +102,13 @@ public class MonthViewPanel extends JPanel {
             cell.add(eventsList, BorderLayout.CENTER);
             
             // Weather (Bottom Right)
-            DashboardEvent weatherEvent = dayEvents.stream().filter(e -> e.getWeatherForecast() != null).findFirst().orElse(null);
+            DashboardViewModel weatherEvent = dayEvents.stream()
+                    .filter(e -> e.getWeatherIcon() != null && !e.getWeatherIcon().isEmpty())
+                    .findFirst()
+                    .orElse(null);
+            
             if (weatherEvent != null) {
-                JLabel w = new JLabel(weatherEvent.getWeatherForecast().getConditionIcon() + " ");
+                JLabel w = new JLabel(weatherEvent.getWeatherIcon() + " ");
                 w.setHorizontalAlignment(SwingConstants.RIGHT);
                 cell.add(w, BorderLayout.SOUTH);
             }
