@@ -1,173 +1,243 @@
 package com.aurora.climatesync.view;
 
-import com.aurora.climatesync.model.Location;
-import com.aurora.climatesync.model.WeatherForecast;
-import com.aurora.climatesync.service.WeatherService;
+import com.aurora.climatesync.presenter.WeatherContract;
+import com.aurora.climatesync.presenter.WeatherViewModel;
 
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
-public class WeatherView extends JPanel {
-    private final WeatherService weatherService;
-    private final JTextField cityField;
-    private final JTextField countryField;
+public class WeatherView extends JPanel implements WeatherContract.View {
+    private WeatherContract.Presenter presenter;
+    private final JTextField searchField;
     private final JLabel statusLabel;
-    private final JPanel forecastPanel;
+    private final JPanel contentPanel;
 
-    public WeatherView(WeatherService weatherService) {
-        this.weatherService = weatherService;
+    public WeatherView() {
         this.setLayout(new BorderLayout());
+        this.setBackground(Color.WHITE);
 
-        // Input Panel
-        JPanel inputPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 15));
-        inputPanel.setBackground(new Color(245, 245, 245));
-        inputPanel.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, Color.LIGHT_GRAY));
+        // --- Header / Search Bar ---
+        JPanel headerPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 20));
+        headerPanel.setBackground(new Color(245, 245, 245));
+        headerPanel.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(220, 220, 220)));
+
+        searchField = createStyledTextField("Location (e.g. Toronto, Canada)");
+        searchField.setPreferredSize(new Dimension(300, 40));
         
-        cityField = new JTextField("Toronto", 15);
-        countryField = new JTextField("Canada", 15);
-        JButton fetchButton = new JButton("Fetch Forecast");
+        JButton searchButton = new JButton("Search");
+        styleButton(searchButton);
+        searchButton.addActionListener(e -> {
+            if (presenter != null) {
+                presenter.onSearch(searchField.getText());
+            }
+        });
+
+        headerPanel.add(new JLabel("Location:"));
+        headerPanel.add(searchField);
+        headerPanel.add(searchButton);
+
+        this.add(headerPanel, BorderLayout.NORTH);
+
+        // --- Main Content Area ---
+        contentPanel = new JPanel();
+        contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
+        contentPanel.setBackground(Color.WHITE);
+        contentPanel.setBorder(new EmptyBorder(20, 40, 20, 40));
         
-        fetchButton.setBackground(new Color(66, 133, 244));
-        fetchButton.setForeground(Color.BLACK);
-        fetchButton.setOpaque(true);
-        fetchButton.setBorderPainted(false);
+        JScrollPane scrollPane = new JScrollPane(contentPanel);
+        scrollPane.setBorder(null);
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        this.add(scrollPane, BorderLayout.CENTER);
 
-        inputPanel.add(new JLabel("City:"));
-        inputPanel.add(cityField);
-        inputPanel.add(new JLabel("Country:"));
-        inputPanel.add(countryField);
-        inputPanel.add(fetchButton);
-
-        // Forecast Panel
-        forecastPanel = new JPanel();
-        forecastPanel.setLayout(new BoxLayout(forecastPanel, BoxLayout.Y_AXIS));
-        forecastPanel.setBackground(Color.WHITE);
-        forecastPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-
-        // Status Label
-        statusLabel = new JLabel("Ready.");
-        statusLabel.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
-        statusLabel.setFont(new Font("Segoe UI", Font.ITALIC, 12));
-
-        this.add(inputPanel, BorderLayout.NORTH);
-        this.add(new JScrollPane(forecastPanel), BorderLayout.CENTER);
+        // --- Footer / Status ---
+        statusLabel = new JLabel("Ready");
+        statusLabel.setBorder(new EmptyBorder(5, 10, 5, 10));
+        statusLabel.setForeground(Color.GRAY);
         this.add(statusLabel, BorderLayout.SOUTH);
-
-        fetchButton.addActionListener(e -> fetchWeather());
-        
-        // Auto fetch on startup
-        fetchWeather();
     }
 
-    private void fetchWeather() {
-        String city = cityField.getText().trim();
-        String country = countryField.getText().trim();
+    public void setPresenter(WeatherContract.Presenter presenter) {
+        this.presenter = presenter;
+        // Notify presenter that view is ready
+        presenter.onViewReady();
+    }
 
-        if (city.isEmpty() || country.isEmpty()) {
-            statusLabel.setText("Please enter both city and country.");
+    @Override
+    public void showLoading(String message) {
+        statusLabel.setText(message);
+        contentPanel.removeAll();
+        contentPanel.revalidate();
+        contentPanel.repaint();
+    }
+
+    @Override
+    public void hideLoading() {
+        statusLabel.setText("Ready");
+    }
+
+    @Override
+    public void showError(String message) {
+        statusLabel.setText(message);
+        JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.ERROR_MESSAGE);
+    }
+
+    @Override
+    public void showWeather(String city, List<WeatherViewModel> forecasts) {
+        contentPanel.removeAll();
+        statusLabel.setText("Weather updated for " + city);
+
+        if (forecasts == null || forecasts.isEmpty()) {
+            JLabel errorLabel = new JLabel("No weather data found for " + city);
+            errorLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
+            errorLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+            contentPanel.add(Box.createVerticalGlue());
+            contentPanel.add(errorLabel);
+            contentPanel.add(Box.createVerticalGlue());
+            contentPanel.revalidate();
+            contentPanel.repaint();
             return;
         }
 
-        statusLabel.setText("Fetching...");
+        // 1. Current Weather (Today)
+        WeatherViewModel today = forecasts.get(0);
+        JPanel currentPanel = new JPanel(new GridBagLayout());
+        currentPanel.setBackground(Color.WHITE);
+        currentPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        currentPanel.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(230, 230, 230), 1, true),
+            new EmptyBorder(20, 40, 20, 40)
+        ));
 
-        // Run in background to avoid freezing UI
-        new Thread(() -> {
-            try {
-                // Create Location without hardcoded coordinates so the service
-                // will resolve coordinates from the city/country before fetching.
-                Location location = new Location(city, country, 0.0, 0.0);
-                List<WeatherForecast> forecasts = weatherService.getWeeklyForecast(location);
-                
-                SwingUtilities.invokeLater(() -> {
-                    renderForecast(forecastPanel, location, forecasts);
-                    statusLabel.setText("Done.");
-                });
-            } catch (Exception e) {
-                SwingUtilities.invokeLater(() -> statusLabel.setText("Error: " + e.getMessage()));
-            }
-        }).start();
-    }
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0; gbc.gridy = 0;
+        gbc.anchor = GridBagConstraints.CENTER;
+        gbc.insets = new Insets(5, 5, 5, 5);
 
-    private void renderForecast(JPanel panel, Location location, List<WeatherForecast> forecasts) {
-        panel.removeAll();
+        // City Name
+        JLabel cityLabel = new JLabel(city);
+        cityLabel.setFont(new Font("Segoe UI", Font.BOLD, 32));
+        currentPanel.add(cityLabel, gbc);
 
-        // City
-        JLabel cityLabel = new JLabel(location.getCityName());
-        cityLabel.setFont(new Font("Arial", Font.BOLD, 28));
-        cityLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        panel.add(cityLabel);
+        // Date
+        gbc.gridy++;
+        JLabel dateLabel = new JLabel(today.getDate().format(DateTimeFormatter.ofPattern("EEEE, MMMM d")));
+        dateLabel.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+        dateLabel.setForeground(Color.GRAY);
+        currentPanel.add(dateLabel, gbc);
 
-        if (forecasts.isEmpty()) return;
+        // Icon & Temp
+        gbc.gridy++;
+        JPanel tempPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 0));
+        tempPanel.setOpaque(false);
+        
+        JLabel iconLabel = new JLabel(today.getConditionIcon());
+        iconLabel.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 64));
+        
+        JLabel tempLabel = new JLabel(today.getTemperatureDisplay());
+        tempLabel.setFont(new Font("Segoe UI", Font.BOLD, 64));
+        
+        tempPanel.add(iconLabel);
+        tempPanel.add(tempLabel);
+        currentPanel.add(tempPanel, gbc);
 
-        // Today - temp
-        WeatherForecast today = forecasts.get(0);
-        JLabel todayTemp = new JLabel((int) today.getMaxTemperature() + "°C");
-        todayTemp.setFont(new Font("Arial", Font.BOLD, 48));
-        todayTemp.setAlignmentX(Component.CENTER_ALIGNMENT);
-        panel.add(todayTemp);
+        // High/Low Label
+        gbc.gridy++;
+        JLabel hlLabel = new JLabel(today.getHighLowDisplay());
+        hlLabel.setFont(new Font("Segoe UI", Font.PLAIN, 18));
+        hlLabel.setForeground(Color.DARK_GRAY);
+        currentPanel.add(hlLabel, gbc);
 
-        panel.add(Box.createVerticalStrut(20));
+        // Condition Text
+        gbc.gridy++;
+        JLabel conditionLabel = new JLabel(today.getCondition());
+        conditionLabel.setFont(new Font("Segoe UI", Font.PLAIN, 24));
+        currentPanel.add(conditionLabel, gbc);
 
-        // 7 Day List
-        for (WeatherForecast wf : forecasts) {
-            JPanel row = new JPanel(new FlowLayout(FlowLayout.CENTER));
-            row.setOpaque(false);
+        // Details (Wind, Precip)
+        gbc.gridy++;
+        JPanel detailsPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 30, 0));
+        detailsPanel.setOpaque(false);
+        detailsPanel.add(createDetailLabel("Wind", today.getWindSpeedDisplay()));
+        detailsPanel.add(createDetailLabel("Precip", today.getPrecipitationDisplay()));
+        currentPanel.add(detailsPanel, gbc);
 
-            JLabel dateLabel = new JLabel(wf.getDate().toString());
-            JLabel iconLabel = new JLabel(wf.getConditionIcon());
-            JLabel hlLabel = new JLabel(
-                    "H: " + (int) wf.getMaxTemperature() + "°   L: " + (int) wf.getMinTemperature() + "°"
-            );
+        contentPanel.add(currentPanel);
+        contentPanel.add(Box.createVerticalStrut(30));
 
-            row.add(dateLabel);
-            row.add(Box.createHorizontalStrut(10));
-            row.add(iconLabel);
-            row.add(Box.createHorizontalStrut(10));
-            row.add(hlLabel);
+        // 2. Weekly Forecast
+        JLabel weeklyLabel = new JLabel("7-Day Forecast");
+        weeklyLabel.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        weeklyLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        contentPanel.add(weeklyLabel);
+        contentPanel.add(Box.createVerticalStrut(15));
 
-            panel.add(row);
+        JPanel weeklyPanel = new JPanel(new GridLayout(0, 1, 0, 10));
+        weeklyPanel.setOpaque(false);
+        weeklyPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        // Limit width
+        weeklyPanel.setMaximumSize(new Dimension(600, Integer.MAX_VALUE));
+
+        for (WeatherViewModel wf : forecasts) {
+            weeklyPanel.add(createForecastRow(wf));
         }
-        
-        panel.add(Box.createVerticalStrut(25));
-        
-        // Stats Panel
-        JPanel statsPanel = new JPanel();
-        statsPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 40, 10));
-        statsPanel.setOpaque(false);
 
-        // Wind Speed Box
-        JPanel windBox = createStatBox("Wind Speed", ((int) today.getWindSpeed()) + " km/h");
-        statsPanel.add(windBox);
-
-        // Humidity Box
-        JPanel humidityBox = createStatBox("Humidity", (int) (today.getPrecipitationChance() * 100) + "%");
-        statsPanel.add(humidityBox);
-
-        panel.add(statsPanel);
+        contentPanel.add(weeklyPanel);
         
-        panel.revalidate();
-        panel.repaint();
+        contentPanel.revalidate();
+        contentPanel.repaint();
     }
 
-    private JPanel createStatBox(String title, String value) {
-        JPanel box = new JPanel();
-        box.setPreferredSize(new Dimension(150, 80));
-        box.setBackground(new Color(255, 220, 220));
-        box.setBorder(BorderFactory.createLineBorder(Color.BLACK, 2));
-        box.setLayout(new BoxLayout(box, BoxLayout.Y_AXIS));
+    private JTextField createStyledTextField(String placeholder) {
+        JTextField field = new JTextField(15);
+        field.setToolTipText(placeholder);
+        return field;
+    }
 
-        JLabel titleLabel = new JLabel(title);
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 16));
-        titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+    private void styleButton(JButton button) {
+        button.setBackground(new Color(66, 133, 244));
+        button.setForeground(Color.WHITE);
+        button.setFocusPainted(false);
+        button.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        button.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
+        button.setOpaque(true);
+        button.setBorderPainted(false);
+    }
 
-        JLabel valueLabel = new JLabel(value);
-        valueLabel.setFont(new Font("Arial", Font.BOLD, 22));
-        valueLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+    private JLabel createDetailLabel(String title, String value) {
+        JLabel label = new JLabel(title + ": " + value);
+        label.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        label.setForeground(Color.DARK_GRAY);
+        return label;
+    }
 
-        box.add(Box.createVerticalStrut(5));
-        box.add(titleLabel);
-        box.add(valueLabel);
-        return box;
+    private JPanel createForecastRow(WeatherViewModel wf) {
+        JPanel row = new JPanel(new BorderLayout());
+        row.setBackground(new Color(250, 250, 250));
+        row.setBorder(new EmptyBorder(10, 20, 10, 20));
+        
+        // Day
+        JLabel dayLabel = new JLabel(wf.getDate().format(DateTimeFormatter.ofPattern("EEEE")));
+        dayLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        dayLabel.setPreferredSize(new Dimension(100, 20));
+        
+        // Icon
+        JLabel iconLabel = new JLabel(wf.getConditionIcon());
+        iconLabel.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 20));
+        iconLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        iconLabel.setPreferredSize(new Dimension(50, 20));
+
+        // Temps
+        JLabel tempLabel = new JLabel(wf.getHighLowDisplay());
+        tempLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        tempLabel.setHorizontalAlignment(SwingConstants.RIGHT);
+
+        row.add(dayLabel, BorderLayout.WEST);
+        row.add(iconLabel, BorderLayout.CENTER);
+        row.add(tempLabel, BorderLayout.EAST);
+        
+        return row;
     }
 }

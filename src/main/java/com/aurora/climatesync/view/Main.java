@@ -11,6 +11,8 @@ import org.springframework.stereotype.Component;
 
 import javax.swing.*;
 
+import com.aurora.climatesync.presenter.WeatherPresenter;
+
 @Component
 public class Main {
 
@@ -37,7 +39,10 @@ public class Main {
         tabbedPane.addTab("Home", dashboardView);
 
         // Weather Tab
-        WeatherView weatherView = new WeatherView(weatherService);
+        WeatherView weatherView = new WeatherView();
+        WeatherPresenter weatherPresenter = new WeatherPresenter(weatherView, weatherService);
+        weatherView.setPresenter(weatherPresenter);
+        
         tabbedPane.addTab("Weather", weatherView);
 
         frame.add(tabbedPane);
