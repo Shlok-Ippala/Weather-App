@@ -30,13 +30,25 @@ public class GoogleCalendarServiceImpl implements CalendarService {
 
     @Override
     public String connect() throws Exception {
-        final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
+        final NetHttpTransport HTTP_TRANSPORT = getHttpTransport();
         Credential credential = credentialManager.getCredentials(HTTP_TRANSPORT);
-        this.client = new Calendar.Builder(HTTP_TRANSPORT, credentialManager.getJsonFactory(), credential)
-                .setApplicationName(APPLICATION_NAME)
-                .build();
+        this.client = createCalendarClient(HTTP_TRANSPORT, credential);
 
         // Test call to verify token
+        return verifyConnection(client);
+    }
+
+    protected NetHttpTransport getHttpTransport() throws Exception {
+        return GoogleNetHttpTransport.newTrustedTransport();
+    }
+
+    protected Calendar createCalendarClient(NetHttpTransport transport, Credential credential) {
+        return new Calendar.Builder(transport, credentialManager.getJsonFactory(), credential)
+                .setApplicationName(APPLICATION_NAME)
+                .build();
+    }
+
+    protected String verifyConnection(Calendar client) throws IOException {
         com.google.api.services.calendar.model.Calendar calendar = client.calendars().get("primary").execute();
         return calendar.getId();
     }

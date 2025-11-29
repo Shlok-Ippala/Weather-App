@@ -5,9 +5,7 @@ public class User {
     private String email;
     private String displayName;
     private boolean isGoogleConnected; // Track if connected Google Calendar
-    private String accessToken;     // OAuth access token
-    private String refreshToken;
-
+    
     public User(String userId, String email, String displayName) {
         this.userId = userId;
         this.email = email;
@@ -22,8 +20,6 @@ public class User {
 
 
     public void clearTokens() {
-        this.accessToken = null;
-        this.refreshToken = null;
         this.isGoogleConnected = false;
     }
 

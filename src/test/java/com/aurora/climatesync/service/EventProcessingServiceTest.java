@@ -164,4 +164,105 @@ class EventProcessingServiceTest {
         assertEquals("json-1", result.get(0).getEventID());
         assertEquals("Montreal, QC", result.get(0).getLocation());
     }
+
+    @Test
+    void testProcessEvents_NullStart() {
+        Event event = new Event();
+        event.setId("6");
+        event.setSummary("Null Start");
+        event.setLocation("Toronto");
+        event.setStart(null);
+
+        List<Event> rawEvents = new ArrayList<>();
+        rawEvents.add(event);
+
+        List<ProcessedEvent> result = eventProcessingService.processEvents(rawEvents);
+        assertEquals(0, result.size());
+    }
+
+    @Test
+    void testProcessEvents_NullEnd() {
+        Event event = new Event();
+        event.setId("7");
+        event.setSummary("Null End");
+        event.setLocation("Toronto");
+        
+        EventDateTime start = new EventDateTime();
+        start.setDateTime(new DateTime("2023-10-27T10:00:00.000-04:00"));
+        event.setStart(start);
+        event.setEnd(null);
+
+        List<Event> rawEvents = new ArrayList<>();
+        rawEvents.add(event);
+
+        List<ProcessedEvent> result = eventProcessingService.processEvents(rawEvents);
+        assertEquals(1, result.size());
+        assertNull(result.get(0).getEndTime());
+    }
+
+    @Test
+    void testProcessEvents_NullEndDateTime() {
+        Event event = new Event();
+        event.setId("8");
+        event.setSummary("Null End DateTime");
+        event.setLocation("Toronto");
+        
+        EventDateTime start = new EventDateTime();
+        start.setDateTime(new DateTime("2023-10-27T10:00:00.000-04:00"));
+        event.setStart(start);
+        
+        EventDateTime end = new EventDateTime();
+        // DateTime is null
+        event.setEnd(end);
+
+        List<Event> rawEvents = new ArrayList<>();
+        rawEvents.add(event);
+
+        List<ProcessedEvent> result = eventProcessingService.processEvents(rawEvents);
+        assertEquals(1, result.size());
+        assertNull(result.get(0).getEndTime());
+    }
+
+    @Test
+    void testProcessEvents_WithTimeZone() {
+        Event event = new Event();
+        event.setId("9");
+        event.setSummary("Timezone Event");
+        event.setLocation("Toronto");
+        
+        EventDateTime start = new EventDateTime();
+        start.setDateTime(new DateTime("2023-10-27T10:00:00.000Z"));
+        start.setTimeZone("America/Toronto");
+        event.setStart(start);
+        event.setEnd(start);
+
+        List<Event> rawEvents = new ArrayList<>();
+        rawEvents.add(event);
+
+        List<ProcessedEvent> result = eventProcessingService.processEvents(rawEvents);
+        assertEquals(1, result.size());
+        assertEquals("America/Toronto", result.get(0).getStartTime().getZone().toString());
+    }
+
+    @Test
+    void testProcessEvents_InvalidTimeZone() {
+        Event event = new Event();
+        event.setId("10");
+        event.setSummary("Invalid Timezone");
+        event.setLocation("Toronto");
+        
+        EventDateTime start = new EventDateTime();
+        start.setDateTime(new DateTime("2023-10-27T10:00:00.000Z"));
+        start.setTimeZone("Invalid/Zone");
+        event.setStart(start);
+        event.setEnd(start);
+
+        List<Event> rawEvents = new ArrayList<>();
+        rawEvents.add(event);
+
+        List<ProcessedEvent> result = eventProcessingService.processEvents(rawEvents);
+        assertEquals(1, result.size());
+        // Should fallback to system default or UTC, but definitely not crash
+        assertNotNull(result.get(0).getStartTime());
+    }
 }
