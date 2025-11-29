@@ -45,7 +45,7 @@ public class SearchService {
         int count = (maxResults > 0 && maxResults <=100) ? maxResults : 100;
 
         try{
-            String urlString = "https://geocoding-api.open-meteo.com/v1/search?q=" +
+            String urlString = "https://geocoding-api.open-meteo.com/v1/search?name=" +
                     URLEncoder.encode(q, StandardCharsets.UTF_8) +
                     "&count=" + count +
                     "&language=en&format=json";
@@ -99,8 +99,8 @@ public class SearchService {
         return weatherService.getWeeklyForecast(location);
     }
 
-    private JSONObject makeHttpRequest(String urlString) throws Exception {
-        URL url = new URL(urlString);
+    protected JSONObject makeHttpRequest(String urlString) throws Exception {
+        URL url = java.net.URI.create(urlString).toURL();
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("GET");
         conn.setConnectTimeout(5000);

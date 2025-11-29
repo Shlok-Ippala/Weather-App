@@ -34,15 +34,17 @@ public class DashboardServiceImpl implements DashboardService {
 
         for (CalendarEvent event : events) {
             WeatherForecast forecast = null;
+            com.aurora.climatesync.model.EventWeather eventWeather = null;
             if (event.getEventLocation() != null) {
                 try {
                     forecast = weatherService.getForecastForDate(event.getEventLocation(), event.getStartTime().toLocalDate());
+                    eventWeather = weatherService.getForecastForTime(event.getEventLocation(), event.getStartTime());
                 } catch (Exception e) {
                     // Log error but continue processing other events
                     logger.error("Could not fetch weather for event: {}", event.getSummary(), e);
                 }
             }
-            dashboardEvents.add(new DashboardEvent(event, forecast));
+            dashboardEvents.add(new DashboardEvent(event, forecast, eventWeather));
         }
 
         return dashboardEvents;
