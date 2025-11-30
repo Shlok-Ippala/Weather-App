@@ -1,5 +1,7 @@
 package com.aurora.climatesync.model;
 
+import com.aurora.climatesync.view.WeatherClimateMapper;
+
 import java.time.LocalDate;
 
 public class WeatherForecast {
@@ -12,6 +14,7 @@ public class WeatherForecast {
     private double windSpeed;
     private String conditionIcon;
     private int weatherCode;
+    private String iconPath;
 
 
     public WeatherForecast(LocalDate date,
@@ -31,36 +34,11 @@ public class WeatherForecast {
         this.windSpeed = windSpeed;
         this.weatherCode = weatherCode;
 
-        switch (condition.toLowerCase()) {
-            case "rain":
-            case "rainy":
-                this.conditionIcon = "🌧️";
-                break;
+        this.iconPath = WeatherClimateMapper.getIcon(weatherCode);
+    }
 
-            case "sunny":
-                this.conditionIcon = "☀️";
-                break;
-
-            case "cloudy":
-                this.conditionIcon = "☁️";
-                break;
-
-            case "windy":
-                this.conditionIcon = "💨";
-                break;
-
-            case "snow":
-                this.conditionIcon = "❄️";
-                break;
-
-            case "thunderstorm":
-                this.conditionIcon = "⛈️";
-                break;
-
-            default:
-                this.conditionIcon = "🌤️";   // partly cloudy default
-                break;
-        }
+    public String getIconPath() {
+        return this.iconPath;
     }
 
     // GETTERS

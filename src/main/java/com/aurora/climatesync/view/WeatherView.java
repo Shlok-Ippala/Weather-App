@@ -3,6 +3,7 @@ package com.aurora.climatesync.view;
 import com.aurora.climatesync.model.Location;
 import com.aurora.climatesync.model.WeatherForecast;
 import com.aurora.climatesync.service.WeatherService;
+import com.aurora.climatesync.util.WeatherIconLoader;
 
 import javax.swing.*;
 import java.awt.*;
@@ -113,7 +114,9 @@ public class WeatherView extends JPanel {
             row.setOpaque(false);
 
             JLabel dateLabel = new JLabel(wf.getDate().toString());
-            JLabel iconLabel = new JLabel(wf.getConditionIcon());
+            String iconPath = WeatherClimateMapper.getIcon(wf.getWeatherCode());
+            ImageIcon icon = WeatherIconLoader.load(iconPath);
+            JLabel iconLabel = new JLabel(icon);
             JLabel hlLabel = new JLabel(
                     "H: " + (int) wf.getMaxTemperature() + "°   L: " + (int) wf.getMinTemperature() + "°"
             );
