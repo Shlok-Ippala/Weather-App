@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class DashboardView extends JPanel implements DashboardContract.View {
-    private final CalendarService calendarService;
     private final DashboardContract.Presenter presenter;
 
     // UI Components
@@ -44,12 +43,11 @@ public class DashboardView extends JPanel implements DashboardContract.View {
     private final MonthViewPanel monthViewPanel;
 
     // Data State
-    private List<DashboardViewModel> allEvents = new ArrayList<>();
+    private List<DashboardViewModel> displayedEvents = new ArrayList<>();
     private LocalDate currentDate = LocalDate.now();
     
     public DashboardView(CalendarService calendarService, DashboardService dashboardService) {
-        this.calendarService = calendarService;
-        this.presenter = new DashboardPresenter(this, dashboardService);
+        this.presenter = new DashboardPresenter(this, dashboardService, calendarService);
         this.setLayout(new BorderLayout());
 
         // --- Top Bar ---
@@ -68,17 +66,17 @@ public class DashboardView extends JPanel implements DashboardContract.View {
         searchField.getDocument().addDocumentListener(new DocumentListener() {
             @Override
             public void insertUpdate(DocumentEvent e) {
-                updateView();
+                presenter.onSearchQuery(searchField.getText());
             }
 
             @Override
             public void removeUpdate(DocumentEvent e) {
-                updateView();
+                presenter.onSearchQuery(searchField.getText());
             }
 
             @Override
             public void changedUpdate(DocumentEvent e) {
-                updateView();
+                presenter.onSearchQuery(searchField.getText());
             }
         });
         searchPanel.add(new JLabel("Search: "));
@@ -167,25 +165,6 @@ public class DashboardView extends JPanel implements DashboardContract.View {
         prevButton.addActionListener(e -> navigate(-1));
         nextButton.addActionListener(e -> navigate(1));
 
-        // Search field listener for real-time filtering
-        searchField.getDocument().addDocumentListener(new DocumentListener() {
-            @Override
-            public void insertUpdate(DocumentEvent e) {
-                filterEvents();
-            }
-
-            @Override
-            public void removeUpdate(DocumentEvent e) {
-                filterEvents();
-            }
-
-            @Override
-            public void changedUpdate(DocumentEvent e) {
-                // Plain text components don't fire this, but we include it for completeness
-                filterEvents();
-            }
-        });
-
         // Initial Load
         loadDashboardData();
     }
@@ -225,7 +204,7 @@ public class DashboardView extends JPanel implements DashboardContract.View {
 
     @Override
     public void showEvents(List<DashboardViewModel> events) {
-        this.allEvents = events;
+        this.displayedEvents = events;
         statusLabel.setText("Loaded " + events.size() + " events.");
         updateView();
     }
@@ -242,7 +221,7 @@ public class DashboardView extends JPanel implements DashboardContract.View {
     }
 
     private void loadDashboardData() {
-        if (!calendarService.isConnected()) {
+        if (!presenter.isCalendarConnected()) {
             showConnectionError();
             return;
         }
@@ -259,13 +238,7 @@ public class DashboardView extends JPanel implements DashboardContract.View {
         JButton connectButton = new JButton("Connect Now");
         connectButton.setAlignmentX(Component.CENTER_ALIGNMENT);
         connectButton.addActionListener(e -> {
-            try {
-                calendarService.connect();
-                loadDashboardData();
-            } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, "Connection failed: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-                ex.printStackTrace();
-            }
+            presenter.connectCalendar();
         });
 
         listViewContainer.add(Box.createVerticalGlue());
@@ -295,13 +268,16 @@ public class DashboardView extends JPanel implements DashboardContract.View {
     }
 
     private void showAddEventDialog() {
-        new AddEventDialog((Frame) SwingUtilities.getWindowAncestor(this), calendarService, newEvent -> {
-            presenter.loadEvents();
+        new AddEventDialog((Frame) SwingUtilities.getWindowAncestor(this), newEvent -> {
+            presenter.addEvent(newEvent);
         }).setVisible(true);
     }
 
     private void showEditEventDialog(CalendarEvent event) {
-        new EditEventDialog((Frame) SwingUtilities.getWindowAncestor(this), event, calendarService, () -> presenter.loadEvents()).setVisible(true);
+        new EditEventDialog((Frame) SwingUtilities.getWindowAncestor(this), event, 
+            updatedEvent -> presenter.updateEvent(updatedEvent),
+            eventId -> presenter.deleteEvent(eventId)
+        ).setVisible(true);
     }
 
     private Color getEventColor(String colorId) {
@@ -312,7 +288,7 @@ public class DashboardView extends JPanel implements DashboardContract.View {
 
     private void renderListView() {
         listViewContainer.removeAll();
-        List<DashboardViewModel> eventsToRender = getFilteredEvents();
+        List<DashboardViewModel> eventsToRender = displayedEvents;
         if (eventsToRender.isEmpty()) {
             listViewContainer.add(new JLabel("No events found."));
         } else {
@@ -326,15 +302,15 @@ public class DashboardView extends JPanel implements DashboardContract.View {
     }
 
     private void renderDayView() {
-        dayViewPanel.render(getFilteredEvents(), currentDate, this::showEditEventDialog);
+        dayViewPanel.render(displayedEvents, currentDate, this::showEditEventDialog);
     }
 
     private void renderWeekView() {
-        weekViewPanel.render(getFilteredEvents(), currentDate, this::showEditEventDialog);
+        weekViewPanel.render(displayedEvents, currentDate, this::showEditEventDialog);
     }
 
     private void renderMonthView() {
-        monthViewPanel.render(getFilteredEvents(), currentDate, this::showEditEventDialog);
+        monthViewPanel.render(displayedEvents, currentDate, this::showEditEventDialog);
     }
 
     private JPanel createEventCard(DashboardViewModel de) {
@@ -372,7 +348,7 @@ public class DashboardView extends JPanel implements DashboardContract.View {
         timePanel.add(dateLabel);
         
         // Center: Title and Location
-        JPanel centerPanel = new JPanel(new GridLayout(2, 1, 0, 4));
+        JPanel centerPanel = new JPanel(new GridLayout(0, 1, 0, 4)); // 0 rows means any number of rows
         centerPanel.setOpaque(false);
         centerPanel.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 10));
         
@@ -395,8 +371,14 @@ public class DashboardView extends JPanel implements DashboardContract.View {
             descLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
             descLabel.setForeground(Color.GRAY);
             centerPanel.add(descLabel);
-            // Adjust grid layout to accommodate description
-            ((GridLayout)centerPanel.getLayout()).setRows(3);
+        }
+
+        // Add Weather Message if available
+        if (de.getWeatherMessage() != null) {
+            JLabel weatherMsgLabel = new JLabel(de.getWeatherMessage());
+            weatherMsgLabel.setFont(new Font("Segoe UI", Font.ITALIC, 11));
+            weatherMsgLabel.setForeground(new Color(0, 102, 204)); // A nice blue for info
+            centerPanel.add(weatherMsgLabel);
         }
 
         // Right: Weather & Edit
@@ -439,44 +421,6 @@ public class DashboardView extends JPanel implements DashboardContract.View {
         card.add(rightPanel, BorderLayout.EAST);
 
         return card;
-    }
-
-    private void filterEvents() {
-        String query = searchField.getText().toLowerCase();
-        List<DashboardViewModel> filteredEvents = allEvents.stream()
-                .filter(de -> de.getTitle().toLowerCase().contains(query) ||
-                              (de.getDescription() != null && de.getDescription().toLowerCase().contains(query)) ||
-                              (de.getLocation() != null && de.getLocation().toLowerCase().contains(query)))
-                .collect(Collectors.toList());
-
-        // Update the view with filtered events
-        if ("List All".equals(viewSelector.getSelectedItem())) {
-            listViewContainer.removeAll();
-            if (filteredEvents.isEmpty()) {
-                listViewContainer.add(new JLabel("No events found."));
-            } else {
-                for (DashboardViewModel de : filteredEvents) {
-                    listViewContainer.add(createEventCard(de));
-                    listViewContainer.add(Box.createRigidArea(new Dimension(0, 10)));
-                }
-            }
-            listViewContainer.revalidate();
-            listViewContainer.repaint();
-        } else {
-            // For other views, we may want to show a message or handle differently
-            statusLabel.setText(filteredEvents.size() + " events found matching your search.");
-        }
-    }
-
-    private List<DashboardViewModel> getFilteredEvents() {
-        String query = searchField.getText().toLowerCase().trim();
-        if (query.isEmpty()) {
-            return allEvents;
-        }
-        return allEvents.stream()
-                .filter(e -> e.getTitle().toLowerCase().contains(query) ||
-                        (e.getDescription() != null && e.getDescription().toLowerCase().contains(query)))
-                .collect(Collectors.toList());
     }
     
     // Inner classes removed and extracted to com.aurora.climatesync.view.component

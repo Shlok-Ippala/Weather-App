@@ -13,11 +13,12 @@ public class DashboardViewModel {
     private final String colorId;
     private final String weatherIcon;
     private final String temperatureDisplay;
+    private final String weatherMessage;
     private final Object sourceEvent; // The original event object for actions
 
     public DashboardViewModel(String eventId, String title, String description, String location, 
                               ZonedDateTime startTime, ZonedDateTime endTime, String colorId,
-                              String weatherIcon, String temperatureDisplay, Object sourceEvent) {
+                              String weatherIcon, String temperatureDisplay, String weatherMessage, Object sourceEvent) {
         this.eventId = eventId;
         this.title = title;
         this.description = description;
@@ -27,6 +28,7 @@ public class DashboardViewModel {
         this.colorId = colorId;
         this.weatherIcon = weatherIcon;
         this.temperatureDisplay = temperatureDisplay;
+        this.weatherMessage = weatherMessage;
         this.sourceEvent = sourceEvent;
     }
 
@@ -39,5 +41,6 @@ public class DashboardViewModel {
     public String getColorId() { return colorId; }
     public String getWeatherIcon() { return weatherIcon; }
     public String getTemperatureDisplay() { return temperatureDisplay; }
+    public String getWeatherMessage() { return weatherMessage; }
     public Object getSourceEvent() { return sourceEvent; }
 }

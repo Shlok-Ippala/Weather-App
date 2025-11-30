@@ -1,4 +1,4 @@
-package com.aurora.climatesync.service;
+package com.aurora.climatesync.infrastructure.google;
 
 import com.aurora.climatesync.model.CalendarEvent;
 import com.aurora.climatesync.model.Location;
@@ -21,7 +21,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
-class GoogleCalendarServiceImplTest {
+class GoogleCalendarRepositoryTest {
 
     @Mock
     private GoogleCredentialManager credentialManager;
@@ -50,21 +50,15 @@ class GoogleCalendarServiceImplTest {
     @Mock
     private Calendar.Events.Delete deleteRequest;
 
-    @Mock
-    private Calendar.Calendars calendars;
-
-    @Mock
-    private Calendar.Calendars.Get calendarsGet;
-
-    private TestableGoogleCalendarServiceImpl service;
+    private TestableGoogleCalendarRepository repository;
 
     // Subclass to override protected methods
-    private static class TestableGoogleCalendarServiceImpl extends GoogleCalendarServiceImpl {
+    private static class TestableGoogleCalendarRepository extends GoogleCalendarRepository {
         private NetHttpTransport mockTransport;
         private Calendar mockClient;
         private String mockCalendarId;
 
-        public TestableGoogleCalendarServiceImpl(GoogleCredentialManager credentialManager, GoogleEventMapper eventMapper) {
+        public TestableGoogleCalendarRepository(GoogleCredentialManager credentialManager, GoogleEventMapper eventMapper) {
             super(credentialManager, eventMapper);
         }
 
@@ -99,26 +93,26 @@ class GoogleCalendarServiceImplTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        service = new TestableGoogleCalendarServiceImpl(credentialManager, eventMapper);
-        service.setCalendarClient(client); // Inject mock client for other tests
+        repository = new TestableGoogleCalendarRepository(credentialManager, eventMapper);
+        repository.setCalendarClient(client); // Inject mock client for other tests
     }
 
     @Test
     void connect_ShouldReturnCalendarId_WhenSuccessful() throws Exception {
         // Arrange
         NetHttpTransport mockTransport = mock(NetHttpTransport.class);
-        service.setMockTransport(mockTransport);
-        service.setMockClient(client);
-        service.setMockCalendarId("primary");
+        repository.setMockTransport(mockTransport);
+        repository.setMockClient(client);
+        repository.setMockCalendarId("primary");
         
         when(credentialManager.getCredentials(mockTransport)).thenReturn(mock(com.google.api.client.auth.oauth2.Credential.class));
 
         // Act
-        String result = service.connect();
+        String result = repository.connect();
 
         // Assert
         assertEquals("primary", result);
-        assertTrue(service.isConnected());
+        assertTrue(repository.isConnected());
     }
 
     @Test
@@ -140,7 +134,7 @@ class GoogleCalendarServiceImplTest {
         when(eventMapper.mapToCalendarEvent(googleEvent)).thenReturn(calendarEvent);
 
         // Act
-        List<CalendarEvent> result = service.getUpcomingEvents();
+        List<CalendarEvent> result = repository.getUpcomingEvents();
 
         // Assert
         assertNotNull(result);
@@ -152,10 +146,10 @@ class GoogleCalendarServiceImplTest {
     @Test
     void getUpcomingEvents_ShouldReturnEmptyList_WhenClientIsNull() {
         // Arrange
-        service.client = null;
+        repository.setCalendarClient(null);
 
         // Act
-        List<CalendarEvent> result = service.getUpcomingEvents();
+        List<CalendarEvent> result = repository.getUpcomingEvents();
 
         // Assert
         assertTrue(result.isEmpty());
@@ -173,7 +167,7 @@ class GoogleCalendarServiceImplTest {
         when(insertRequest.execute()).thenReturn(googleEvent);
 
         // Act
-        service.addEvent(calendarEvent);
+        repository.addEvent(calendarEvent);
 
         // Assert
         verify(client.events()).insert("primary", googleEvent);
@@ -195,7 +189,7 @@ class GoogleCalendarServiceImplTest {
         when(updateRequest.execute()).thenReturn(googleEvent);
 
         // Act
-        service.updateEvent(calendarEvent);
+        repository.updateEvent(calendarEvent);
 
         // Assert
         verify(eventMapper).updateGoogleEvent(googleEvent, calendarEvent);
@@ -211,7 +205,7 @@ class GoogleCalendarServiceImplTest {
         when(eventsResource.delete(anyString(), anyString())).thenReturn(deleteRequest);
         
         // Act
-        service.deleteEvent(eventId);
+        repository.deleteEvent(eventId);
         
         // Assert
         verify(client.events()).delete("primary", eventId);
@@ -221,11 +215,11 @@ class GoogleCalendarServiceImplTest {
     @Test
     void addEvent_ShouldThrowException_WhenClientIsNull() {
         // Arrange
-        service.setCalendarClient(null);
+        repository.setCalendarClient(null);
         CalendarEvent calendarEvent = new CalendarEvent("1", "Test", "Desc", ZonedDateTime.now(), ZonedDateTime.now().plusHours(1), new Location(), "1");
 
         // Act & Assert
-        assertThrows(IllegalStateException.class, () -> service.addEvent(calendarEvent));
+        assertThrows(IllegalStateException.class, () -> repository.addEvent(calendarEvent));
     }
 
     @Test
@@ -240,17 +234,17 @@ class GoogleCalendarServiceImplTest {
         when(insertRequest.execute()).thenThrow(new IOException("API Error"));
 
         // Act & Assert
-        assertThrows(RuntimeException.class, () -> service.addEvent(calendarEvent));
+        assertThrows(RuntimeException.class, () -> repository.addEvent(calendarEvent));
     }
 
     @Test
     void updateEvent_ShouldThrowException_WhenClientIsNull() {
         // Arrange
-        service.setCalendarClient(null);
+        repository.setCalendarClient(null);
         CalendarEvent calendarEvent = new CalendarEvent("1", "Test", "Desc", ZonedDateTime.now(), ZonedDateTime.now().plusHours(1), new Location(), "1");
 
         // Act & Assert
-        assertThrows(IllegalStateException.class, () -> service.updateEvent(calendarEvent));
+        assertThrows(IllegalStateException.class, () -> repository.updateEvent(calendarEvent));
     }
 
     @Test
@@ -263,16 +257,16 @@ class GoogleCalendarServiceImplTest {
         when(getRequest.execute()).thenThrow(new IOException("API Error"));
 
         // Act & Assert
-        assertThrows(RuntimeException.class, () -> service.updateEvent(calendarEvent));
+        assertThrows(RuntimeException.class, () -> repository.updateEvent(calendarEvent));
     }
 
     @Test
     void deleteEvent_ShouldThrowException_WhenClientIsNull() {
         // Arrange
-        service.setCalendarClient(null);
+        repository.setCalendarClient(null);
 
         // Act & Assert
-        assertThrows(IllegalStateException.class, () -> service.deleteEvent("123"));
+        assertThrows(IllegalStateException.class, () -> repository.deleteEvent("123"));
     }
 
     @Test
@@ -283,13 +277,13 @@ class GoogleCalendarServiceImplTest {
         when(deleteRequest.execute()).thenThrow(new IOException("API Error"));
 
         // Act & Assert
-        assertThrows(RuntimeException.class, () -> service.deleteEvent("123"));
+        assertThrows(RuntimeException.class, () -> repository.deleteEvent("123"));
     }
 
     @Test
     void isConnected_ShouldReturnTrue_WhenClientIsNotNull() {
         // Act
-        boolean result = service.isConnected();
+        boolean result = repository.isConnected();
 
         // Assert
         assertTrue(result);
@@ -298,10 +292,10 @@ class GoogleCalendarServiceImplTest {
     @Test
     void isConnected_ShouldReturnFalse_WhenClientIsNull() {
         // Arrange
-        service.setCalendarClient(null);
+        repository.setCalendarClient(null);
 
         // Act
-        boolean result = service.isConnected();
+        boolean result = repository.isConnected();
 
         // Assert
         assertFalse(result);
@@ -319,7 +313,7 @@ class GoogleCalendarServiceImplTest {
         when(listRequest.execute()).thenThrow(new IOException("API Error"));
 
         // Act
-        List<CalendarEvent> result = service.getUpcomingEvents();
+        List<CalendarEvent> result = repository.getUpcomingEvents();
 
         // Assert
         assertTrue(result.isEmpty());
@@ -340,7 +334,7 @@ class GoogleCalendarServiceImplTest {
         when(listRequest.execute()).thenReturn(events);
 
         // Act
-        List<CalendarEvent> result = service.getUpcomingEvents();
+        List<CalendarEvent> result = repository.getUpcomingEvents();
 
         // Assert
         assertTrue(result.isEmpty());

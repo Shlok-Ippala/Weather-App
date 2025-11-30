@@ -13,5 +13,15 @@ public interface DashboardContract {
         void loadEvents();
         void loadEvents(int limit);
         void onViewReady();
+        
+        // Calendar Operations
+        void connectCalendar();
+        boolean isCalendarConnected();
+        void addEvent(com.aurora.climatesync.model.CalendarEvent event);
+        void updateEvent(com.aurora.climatesync.model.CalendarEvent event);
+        void deleteEvent(String eventId);
+        
+        // Search
+        void onSearchQuery(String query);
     }
 }

@@ -1,7 +1,8 @@
-package com.aurora.climatesync.service;
+package com.aurora.climatesync.infrastructure.google;
 
 import com.aurora.climatesync.model.CalendarEvent;
-import org.springframework.stereotype.Service;
+import com.aurora.climatesync.repository.CalendarRepository;
+import org.springframework.stereotype.Repository;
 
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
@@ -15,15 +16,15 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 
-@Service
-public class GoogleCalendarServiceImpl implements CalendarService {
+@Repository
+public class GoogleCalendarRepository implements CalendarRepository {
     private static final String APPLICATION_NAME = "ClimateSync";
 
     Calendar client;
     private final GoogleCredentialManager credentialManager;
     private final GoogleEventMapper eventMapper;
 
-    public GoogleCalendarServiceImpl(GoogleCredentialManager credentialManager, GoogleEventMapper eventMapper) {
+    public GoogleCalendarRepository(GoogleCredentialManager credentialManager, GoogleEventMapper eventMapper) {
         this.credentialManager = credentialManager;
         this.eventMapper = eventMapper;
     }
@@ -109,11 +110,11 @@ public class GoogleCalendarServiceImpl implements CalendarService {
     @Override
     public List<CalendarEvent> getUpcomingEvents(int maxResults) {
         if (client == null) {
-            System.out.println("GoogleCalendarServiceImpl: Client is null (not connected). Returning empty list.");
+            System.out.println("GoogleCalendarRepository: Client is null (not connected). Returning empty list.");
             return Collections.emptyList();
         }
         try {
-            System.out.println("GoogleCalendarServiceImpl: Fetching events...");
+            System.out.println("GoogleCalendarRepository: Fetching events...");
             DateTime now = new DateTime(System.currentTimeMillis());
             Events events = client.events().list("primary")
                     .setMaxResults(maxResults)
@@ -141,4 +142,3 @@ public class GoogleCalendarServiceImpl implements CalendarService {
         this.client = client;
     }
 }
-

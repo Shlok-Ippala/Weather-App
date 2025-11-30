@@ -120,6 +120,17 @@ public class TimeBlockPanel extends JPanel {
             content.add(weatherLabel);
         }
 
+        // Add weather message if available
+        if (de.getWeatherMessage() != null) {
+            JLabel msgLabel = new JLabel(de.getWeatherMessage());
+            msgLabel.setFont(new Font("Arial", Font.ITALIC, 9));
+            msgLabel.setForeground(new Color(0, 102, 204));
+            content.add(msgLabel);
+            
+            // Also add as tooltip in case it's cut off
+            card.setToolTipText(de.getWeatherMessage());
+        }
+
         card.add(content, BorderLayout.CENTER);
 
         card.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));

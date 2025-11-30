@@ -2,7 +2,6 @@ package com.aurora.climatesync.view.dialog;
 
 import com.aurora.climatesync.model.CalendarEvent;
 import com.aurora.climatesync.model.Location;
-import com.aurora.climatesync.service.CalendarService;
 import com.aurora.climatesync.util.EventColorUtil;
 
 import javax.swing.*;
@@ -10,18 +9,19 @@ import java.awt.*;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.function.Consumer;
 
 
 public class EditEventDialog extends JDialog {
     private final CalendarEvent event;
-    private final CalendarService calendarService;
-    private final Runnable onSuccess;
+    private final Consumer<CalendarEvent> onUpdate;
+    private final Consumer<String> onDelete;
 
-    public EditEventDialog(Frame owner, CalendarEvent event, CalendarService calendarService, Runnable onSuccess) {
+    public EditEventDialog(Frame owner, CalendarEvent event, Consumer<CalendarEvent> onUpdate, Consumer<String> onDelete) {
         super(owner, "Edit Event", true);
         this.event = event;
-        this.calendarService = calendarService;
-        this.onSuccess = onSuccess;
+        this.onUpdate = onUpdate;
+        this.onDelete = onDelete;
         initializeUI();
     }
 
@@ -95,9 +95,8 @@ public class EditEventDialog extends JDialog {
                         selectedColorId
                 );
                 
-                calendarService.updateEvent(updatedEvent);
+                if (onUpdate != null) onUpdate.accept(updatedEvent);
                 dispose();
-                if (onSuccess != null) onSuccess.run();
                 JOptionPane.showMessageDialog(this, "Event updated successfully!");
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(this, "Error updating event: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
@@ -108,9 +107,8 @@ public class EditEventDialog extends JDialog {
             int confirm = JOptionPane.showConfirmDialog(this, "Are you sure you want to delete this event?", "Confirm Delete", JOptionPane.YES_NO_OPTION);
             if (confirm == JOptionPane.YES_OPTION) {
                 try {
-                    calendarService.deleteEvent(event.getEventID());
+                    if (onDelete != null) onDelete.accept(event.getEventID());
                     dispose();
-                    if (onSuccess != null) onSuccess.run();
                     JOptionPane.showMessageDialog(this, "Event deleted successfully!");
                 } catch (Exception ex) {
                     JOptionPane.showMessageDialog(this, "Error deleting event: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);

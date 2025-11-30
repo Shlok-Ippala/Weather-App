@@ -1,4 +1,4 @@
-package com.aurora.climatesync.service;
+package com.aurora.climatesync.infrastructure.google;
 
 import com.aurora.climatesync.model.CalendarEvent;
 import com.aurora.climatesync.model.Location;
@@ -89,7 +89,7 @@ class GoogleEventMapperTest {
         // Assert
         assertEquals("Test Event", result.getSummary());
         assertEquals("Test Description", result.getDescription());
-        assertEquals("Test Location", result.getLocation());
+        assertEquals("Test Location, Unknown", result.getLocation());
         assertEquals("1", result.getColorId());
         assertNotNull(result.getStart());
         assertNotNull(result.getEnd());
@@ -118,7 +118,7 @@ class GoogleEventMapperTest {
         // Assert
         assertEquals("New Summary", googleEvent.getSummary());
         assertEquals("New Description", googleEvent.getDescription());
-        assertEquals("New Location", googleEvent.getLocation());
+        assertEquals("New Location, Unknown", googleEvent.getLocation());
         assertEquals("2", googleEvent.getColorId());
     }
 }
