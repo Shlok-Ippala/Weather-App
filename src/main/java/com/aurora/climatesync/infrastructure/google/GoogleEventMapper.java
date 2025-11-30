@@ -1,4 +1,4 @@
-package com.aurora.climatesync.service;
+package com.aurora.climatesync.infrastructure.google;
 
 import com.aurora.climatesync.model.CalendarEvent;
 import com.aurora.climatesync.model.Location;

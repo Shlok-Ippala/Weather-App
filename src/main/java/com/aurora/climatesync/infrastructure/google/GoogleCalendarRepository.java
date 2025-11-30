@@ -1,7 +1,8 @@
-package com.aurora.climatesync.service;
+package com.aurora.climatesync.infrastructure.google;
 
 import com.aurora.climatesync.model.CalendarEvent;
-import org.springframework.stereotype.Service;
+import com.aurora.climatesync.repository.CalendarRepository;
+import org.springframework.stereotype.Repository;
 
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
@@ -15,28 +16,40 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 
-@Service
-public class GoogleCalendarServiceImpl implements CalendarService {
+@Repository
+public class GoogleCalendarRepository implements CalendarRepository {
     private static final String APPLICATION_NAME = "ClimateSync";
 
     Calendar client;
     private final GoogleCredentialManager credentialManager;
     private final GoogleEventMapper eventMapper;
 
-    public GoogleCalendarServiceImpl(GoogleCredentialManager credentialManager, GoogleEventMapper eventMapper) {
+    public GoogleCalendarRepository(GoogleCredentialManager credentialManager, GoogleEventMapper eventMapper) {
         this.credentialManager = credentialManager;
         this.eventMapper = eventMapper;
     }
 
     @Override
     public String connect() throws Exception {
-        final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
+        final NetHttpTransport HTTP_TRANSPORT = getHttpTransport();
         Credential credential = credentialManager.getCredentials(HTTP_TRANSPORT);
-        this.client = new Calendar.Builder(HTTP_TRANSPORT, credentialManager.getJsonFactory(), credential)
-                .setApplicationName(APPLICATION_NAME)
-                .build();
+        this.client = createCalendarClient(HTTP_TRANSPORT, credential);
 
         // Test call to verify token
+        return verifyConnection(client);
+    }
+
+    protected NetHttpTransport getHttpTransport() throws Exception {
+        return GoogleNetHttpTransport.newTrustedTransport();
+    }
+
+    protected Calendar createCalendarClient(NetHttpTransport transport, Credential credential) {
+        return new Calendar.Builder(transport, credentialManager.getJsonFactory(), credential)
+                .setApplicationName(APPLICATION_NAME)
+                .build();
+    }
+
+    protected String verifyConnection(Calendar client) throws IOException {
         com.google.api.services.calendar.model.Calendar calendar = client.calendars().get("primary").execute();
         return calendar.getId();
     }
@@ -97,11 +110,11 @@ public class GoogleCalendarServiceImpl implements CalendarService {
     @Override
     public List<CalendarEvent> getUpcomingEvents(int maxResults) {
         if (client == null) {
-            System.out.println("GoogleCalendarServiceImpl: Client is null (not connected). Returning empty list.");
+            System.out.println("GoogleCalendarRepository: Client is null (not connected). Returning empty list.");
             return Collections.emptyList();
         }
         try {
-            System.out.println("GoogleCalendarServiceImpl: Fetching events...");
+            System.out.println("GoogleCalendarRepository: Fetching events...");
             DateTime now = new DateTime(System.currentTimeMillis());
             Events events = client.events().list("primary")
                     .setMaxResults(maxResults)
@@ -129,4 +142,3 @@ public class GoogleCalendarServiceImpl implements CalendarService {
         this.client = client;
     }
 }
-

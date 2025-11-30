@@ -2,7 +2,6 @@ package com.aurora.climatesync.view.dialog;
 
 import com.aurora.climatesync.model.CalendarEvent;
 import com.aurora.climatesync.model.Location;
-import com.aurora.climatesync.service.CalendarService;
 import com.aurora.climatesync.util.EventColorUtil;
 
 import javax.swing.*;
@@ -14,13 +13,11 @@ import java.util.function.Consumer;
 
 
 public class AddEventDialog extends JDialog {
-    private final CalendarService calendarService;
-    private final Consumer<CalendarEvent> onSuccess;
+    private final Consumer<CalendarEvent> onSave;
 
-    public AddEventDialog(Frame owner, CalendarService calendarService, Consumer<CalendarEvent> onSuccess) {
+    public AddEventDialog(Frame owner, Consumer<CalendarEvent> onSave) {
         super(owner, "Add Event", true);
-        this.calendarService = calendarService;
-        this.onSuccess = onSuccess;
+        this.onSave = onSave;
         initializeUI();
     }
 
@@ -90,9 +87,8 @@ public class AddEventDialog extends JDialog {
                         selectedColorId
                 );
                 
-                CalendarEvent createdEvent = calendarService.addEvent(newEvent);
+                if (onSave != null) onSave.accept(newEvent);
                 dispose();
-                if (onSuccess != null) onSuccess.accept(createdEvent);
                 JOptionPane.showMessageDialog(this, "Event added successfully!");
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(this, "Error adding event: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);

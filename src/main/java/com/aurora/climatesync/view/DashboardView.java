@@ -1,7 +1,9 @@
 package com.aurora.climatesync.view;
 
 import com.aurora.climatesync.model.CalendarEvent;
-import com.aurora.climatesync.model.DashboardEvent;
+import com.aurora.climatesync.presenter.DashboardContract;
+import com.aurora.climatesync.presenter.DashboardPresenter;
+import com.aurora.climatesync.presenter.DashboardViewModel;
 import com.aurora.climatesync.service.CalendarService;
 import com.aurora.climatesync.service.DashboardService;
 import com.aurora.climatesync.util.EventColorUtil;
@@ -20,12 +22,10 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
-public class DashboardView extends JPanel {
-    private final CalendarService calendarService;
-    private final DashboardService dashboardService;
+public class DashboardView extends JPanel implements DashboardContract.View {
+    private final DashboardContract.Presenter presenter;
 
     // UI Components
     private final JLabel statusLabel;
@@ -43,12 +43,11 @@ public class DashboardView extends JPanel {
     private final MonthViewPanel monthViewPanel;
 
     // Data State
-    private List<DashboardEvent> allEvents = new ArrayList<>();
+    private List<DashboardViewModel> displayedEvents = new ArrayList<>();
     private LocalDate currentDate = LocalDate.now();
     
     public DashboardView(CalendarService calendarService, DashboardService dashboardService) {
-        this.calendarService = calendarService;
-        this.dashboardService = dashboardService;
+        this.presenter = new DashboardPresenter(this, dashboardService, calendarService);
         this.setLayout(new BorderLayout());
 
         // --- Top Bar ---
@@ -67,17 +66,17 @@ public class DashboardView extends JPanel {
         searchField.getDocument().addDocumentListener(new DocumentListener() {
             @Override
             public void insertUpdate(DocumentEvent e) {
-                updateView();
+                presenter.onSearchQuery(searchField.getText());
             }
 
             @Override
             public void removeUpdate(DocumentEvent e) {
-                updateView();
+                presenter.onSearchQuery(searchField.getText());
             }
 
             @Override
             public void changedUpdate(DocumentEvent e) {
-                updateView();
+                presenter.onSearchQuery(searchField.getText());
             }
         });
         searchPanel.add(new JLabel("Search: "));
@@ -166,25 +165,6 @@ public class DashboardView extends JPanel {
         prevButton.addActionListener(e -> navigate(-1));
         nextButton.addActionListener(e -> navigate(1));
 
-        // Search field listener for real-time filtering
-        searchField.getDocument().addDocumentListener(new DocumentListener() {
-            @Override
-            public void insertUpdate(DocumentEvent e) {
-                filterEvents();
-            }
-
-            @Override
-            public void removeUpdate(DocumentEvent e) {
-                filterEvents();
-            }
-
-            @Override
-            public void changedUpdate(DocumentEvent e) {
-                // Plain text components don't fire this, but we include it for completeness
-                filterEvents();
-            }
-        });
-
         // Initial Load
         loadDashboardData();
     }
@@ -222,56 +202,33 @@ public class DashboardView extends JPanel {
         return "Upcoming Events";
     }
 
+    @Override
+    public void showEvents(List<DashboardViewModel> events) {
+        this.displayedEvents = events;
+        statusLabel.setText("Loaded " + events.size() + " events.");
+        updateView();
+    }
+
+    @Override
+    public void showLoading(String message) {
+        statusLabel.setText(message);
+    }
+
+    @Override
+    public void showError(String message) {
+        statusLabel.setText("Error: " + message);
+        JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.ERROR_MESSAGE);
+    }
+
     private void loadDashboardData() {
-        statusLabel.setText("Loading first 10 events...");
-        
-        if (!calendarService.isConnected()) {
+        if (!presenter.isCalendarConnected()) {
             showConnectionError();
             return;
         }
-
-        new SwingWorker<List<DashboardEvent>, Void>() {
-            @Override
-            protected List<DashboardEvent> doInBackground() throws Exception {
-                return dashboardService.getDashboardEvents(10);
-            }
-
-            @Override
-            protected void done() {
-                try {
-                    List<DashboardEvent> initialEvents = get();
-                    allEvents = initialEvents;
-                    updateView();
-                    statusLabel.setText("Loaded " + initialEvents.size() + " events. Loading more...");
-                    loadMoreEvents();
-                } catch (InterruptedException | ExecutionException e) {
-                    statusLabel.setText("Error loading data: " + e.getMessage());
-                    e.printStackTrace();
-                }
-            }
-        }.execute();
+        presenter.loadEvents();
     }
 
-    private void loadMoreEvents() {
-        new SwingWorker<List<DashboardEvent>, Void>() {
-            @Override
-            protected List<DashboardEvent> doInBackground() throws Exception {
-                return dashboardService.getDashboardEvents(200);
-            }
-
-            @Override
-            protected void done() {
-                try {
-                    allEvents = get();
-                    updateView();
-                    statusLabel.setText("Dashboard updated. " + allEvents.size() + " events found.");
-                } catch (InterruptedException | ExecutionException e) {
-                    statusLabel.setText("Error loading more data: " + e.getMessage());
-                    e.printStackTrace();
-                }
-            }
-        }.execute();
-    }
+    
 
     private void showConnectionError() {
         listViewContainer.removeAll();
@@ -281,13 +238,7 @@ public class DashboardView extends JPanel {
         JButton connectButton = new JButton("Connect Now");
         connectButton.setAlignmentX(Component.CENTER_ALIGNMENT);
         connectButton.addActionListener(e -> {
-            try {
-                calendarService.connect();
-                loadDashboardData();
-            } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, "Connection failed: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-                ex.printStackTrace();
-            }
+            presenter.connectCalendar();
         });
 
         listViewContainer.add(Box.createVerticalGlue());
@@ -317,17 +268,16 @@ public class DashboardView extends JPanel {
     }
 
     private void showAddEventDialog() {
-        new AddEventDialog((Frame) SwingUtilities.getWindowAncestor(this), calendarService, newEvent -> {
-            DashboardEvent de = new DashboardEvent(newEvent, null);
-            allEvents.add(de);
-            allEvents.sort((e1, e2) -> e1.getCalendarEvent().getStartTime().compareTo(e2.getCalendarEvent().getStartTime()));
-            updateView();
-            statusLabel.setText("Event added. Total events: " + allEvents.size());
+        new AddEventDialog((Frame) SwingUtilities.getWindowAncestor(this), newEvent -> {
+            presenter.addEvent(newEvent);
         }).setVisible(true);
     }
 
     private void showEditEventDialog(CalendarEvent event) {
-        new EditEventDialog((Frame) SwingUtilities.getWindowAncestor(this), event, calendarService, this::loadDashboardData).setVisible(true);
+        new EditEventDialog((Frame) SwingUtilities.getWindowAncestor(this), event, 
+            updatedEvent -> presenter.updateEvent(updatedEvent),
+            eventId -> presenter.deleteEvent(eventId)
+        ).setVisible(true);
     }
 
     private Color getEventColor(String colorId) {
@@ -338,11 +288,11 @@ public class DashboardView extends JPanel {
 
     private void renderListView() {
         listViewContainer.removeAll();
-        List<DashboardEvent> eventsToRender = getFilteredEvents();
+        List<DashboardViewModel> eventsToRender = displayedEvents;
         if (eventsToRender.isEmpty()) {
             listViewContainer.add(new JLabel("No events found."));
         } else {
-            for (DashboardEvent de : eventsToRender) {
+            for (DashboardViewModel de : eventsToRender) {
                 listViewContainer.add(createEventCard(de));
                 listViewContainer.add(Box.createRigidArea(new Dimension(0, 10)));
             }
@@ -352,20 +302,20 @@ public class DashboardView extends JPanel {
     }
 
     private void renderDayView() {
-        dayViewPanel.render(getFilteredEvents(), currentDate, this::showEditEventDialog);
+        dayViewPanel.render(displayedEvents, currentDate, this::showEditEventDialog);
     }
 
     private void renderWeekView() {
-        weekViewPanel.render(getFilteredEvents(), currentDate, this::showEditEventDialog);
+        weekViewPanel.render(displayedEvents, currentDate, this::showEditEventDialog);
     }
 
     private void renderMonthView() {
-        monthViewPanel.render(getFilteredEvents(), currentDate, this::showEditEventDialog);
+        monthViewPanel.render(displayedEvents, currentDate, this::showEditEventDialog);
     }
 
-    private JPanel createEventCard(DashboardEvent de) {
-        JPanel card = new JPanel(new BorderLayout());
-        Color eventColor = getEventColor(de.getCalendarEvent().getColorId());
+    private JPanel createEventCard(DashboardViewModel de) {
+        JPanel card = new JPanel(new BorderLayout(15, 0));
+        Color eventColor = getEventColor(de.getColorId());
         
         // Modern Card Style
         card.setBorder(BorderFactory.createCompoundBorder(
@@ -386,11 +336,11 @@ public class DashboardView extends JPanel {
         DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("MMM dd");
         
-        JLabel timeLabel = new JLabel(de.getCalendarEvent().getStartTime().format(timeFormatter));
+        JLabel timeLabel = new JLabel(de.getStartTime().format(timeFormatter));
         timeLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
         timeLabel.setForeground(new Color(50, 50, 50));
         
-        JLabel dateLabel = new JLabel(de.getCalendarEvent().getStartTime().format(dateFormatter));
+        JLabel dateLabel = new JLabel(de.getStartTime().format(dateFormatter));
         dateLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         dateLabel.setForeground(Color.GRAY);
         
@@ -398,14 +348,14 @@ public class DashboardView extends JPanel {
         timePanel.add(dateLabel);
         
         // Center: Title and Location
-        JPanel centerPanel = new JPanel(new GridLayout(2, 1, 0, 4));
+        JPanel centerPanel = new JPanel(new GridLayout(0, 1, 0, 4)); // 0 rows means any number of rows
         centerPanel.setOpaque(false);
         centerPanel.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 10));
         
-        JLabel titleLabel = new JLabel(de.getCalendarEvent().getSummary());
+        JLabel titleLabel = new JLabel(de.getTitle());
         titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 15));
         
-        String locStr = de.getCalendarEvent().getEventLocation() != null ? de.getCalendarEvent().getEventLocation().toString() : "No Location";
+        String locStr = de.getLocation() != null ? de.getLocation() : "No Location";
         JLabel locLabel = new JLabel(locStr);
         locLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         locLabel.setForeground(Color.DARK_GRAY);
@@ -415,14 +365,20 @@ public class DashboardView extends JPanel {
         centerPanel.add(locLabel);
         
         // Add Description if available
-        String desc = de.getCalendarEvent().getDescription();
+        String desc = de.getDescription();
         if (desc != null && !desc.isEmpty()) {
             JLabel descLabel = new JLabel(desc);
             descLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
             descLabel.setForeground(Color.GRAY);
             centerPanel.add(descLabel);
-            // Adjust grid layout to accommodate description
-            ((GridLayout)centerPanel.getLayout()).setRows(3);
+        }
+
+        // Add Weather Message if available
+        if (de.getWeatherMessage() != null) {
+            JLabel weatherMsgLabel = new JLabel(de.getWeatherMessage());
+            weatherMsgLabel.setFont(new Font("Segoe UI", Font.ITALIC, 11));
+            weatherMsgLabel.setForeground(new Color(0, 102, 204)); // A nice blue for info
+            centerPanel.add(weatherMsgLabel);
         }
 
         // Right: Weather & Edit
@@ -432,14 +388,11 @@ public class DashboardView extends JPanel {
         JPanel weatherPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         weatherPanel.setOpaque(false);
         
-        if (de.getWeatherForecast() != null) {
-            JLabel iconLabel = new JLabel(de.getWeatherForecast().getConditionIcon()); 
+        if (de.getWeatherIcon() != null && de.getTemperatureDisplay() != null) {
+            JLabel iconLabel = new JLabel(de.getWeatherIcon()); 
             iconLabel.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 28));
             
-            String tempStr = String.format("%d° / %d°", 
-                    Math.round(de.getWeatherForecast().getMinTemperature()), 
-                    Math.round(de.getWeatherForecast().getMaxTemperature()));
-            JLabel tempLabel = new JLabel(tempStr);
+            JLabel tempLabel = new JLabel(de.getTemperatureDisplay());
             tempLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
             
             weatherPanel.add(tempLabel);
@@ -454,7 +407,11 @@ public class DashboardView extends JPanel {
         JButton editButton = new JButton("Edit");
         editButton.setFocusPainted(false);
         editButton.putClientProperty("JButton.buttonType", "roundRect"); // Mac style hint
-        editButton.addActionListener(e -> showEditEventDialog(de.getCalendarEvent()));
+        editButton.addActionListener(e -> {
+            if (de.getSourceEvent() instanceof CalendarEvent) {
+                showEditEventDialog((CalendarEvent) de.getSourceEvent());
+            }
+        });
         
         rightPanel.add(weatherPanel, BorderLayout.CENTER);
         rightPanel.add(editButton, BorderLayout.EAST);
@@ -464,44 +421,6 @@ public class DashboardView extends JPanel {
         card.add(rightPanel, BorderLayout.EAST);
 
         return card;
-    }
-
-    private void filterEvents() {
-        String query = searchField.getText().toLowerCase();
-        List<DashboardEvent> filteredEvents = allEvents.stream()
-                .filter(de -> de.getCalendarEvent().getSummary().toLowerCase().contains(query) ||
-                              (de.getCalendarEvent().getDescription() != null && de.getCalendarEvent().getDescription().toLowerCase().contains(query)) ||
-                              (de.getCalendarEvent().getEventLocation() != null && de.getCalendarEvent().getEventLocation().toString().toLowerCase().contains(query)))
-                .collect(Collectors.toList());
-
-        // Update the view with filtered events
-        if ("List All".equals(viewSelector.getSelectedItem())) {
-            listViewContainer.removeAll();
-            if (filteredEvents.isEmpty()) {
-                listViewContainer.add(new JLabel("No events found."));
-            } else {
-                for (DashboardEvent de : filteredEvents) {
-                    listViewContainer.add(createEventCard(de));
-                    listViewContainer.add(Box.createRigidArea(new Dimension(0, 10)));
-                }
-            }
-            listViewContainer.revalidate();
-            listViewContainer.repaint();
-        } else {
-            // For other views, we may want to show a message or handle differently
-            statusLabel.setText(filteredEvents.size() + " events found matching your search.");
-        }
-    }
-
-    private List<DashboardEvent> getFilteredEvents() {
-        String query = searchField.getText().toLowerCase().trim();
-        if (query.isEmpty()) {
-            return allEvents;
-        }
-        return allEvents.stream()
-                .filter(e -> e.getCalendarEvent().getSummary().toLowerCase().contains(query) ||
-                        (e.getCalendarEvent().getDescription() != null && e.getCalendarEvent().getDescription().toLowerCase().contains(query)))
-                .collect(Collectors.toList());
     }
     
     // Inner classes removed and extracted to com.aurora.climatesync.view.component

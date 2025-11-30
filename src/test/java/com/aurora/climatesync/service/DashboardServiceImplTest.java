@@ -2,6 +2,7 @@ package com.aurora.climatesync.service;
 
 import com.aurora.climatesync.model.CalendarEvent;
 import com.aurora.climatesync.model.DashboardEvent;
+import com.aurora.climatesync.model.EventWeather;
 import com.aurora.climatesync.model.Location;
 import com.aurora.climatesync.model.WeatherForecast;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,9 +43,11 @@ class DashboardServiceImplTest {
         ZonedDateTime now = ZonedDateTime.now();
         CalendarEvent event = new CalendarEvent("1", "Summary", "Desc", now, now.plusHours(1), location, "1");
         WeatherForecast forecast = new WeatherForecast(now.toLocalDate(), 10.0, 20.0, "Sunny", 0.0, 10.0);
+        EventWeather eventWeather = new EventWeather(15.0, "Sunny", 0.0, 5.0);
 
         when(calendarService.getUpcomingEvents(anyInt())).thenReturn(Collections.singletonList(event));
         when(weatherService.getForecastForDate(any(Location.class), any(LocalDate.class))).thenReturn(forecast);
+        when(weatherService.getForecastForTime(any(Location.class), any(ZonedDateTime.class))).thenReturn(eventWeather);
 
         // Act
         List<DashboardEvent> result = dashboardService.getDashboardEvents();
@@ -53,7 +56,9 @@ class DashboardServiceImplTest {
         assertEquals(1, result.size());
         assertEquals(event, result.get(0).getCalendarEvent());
         assertEquals(forecast, result.get(0).getWeatherForecast());
+        assertEquals(eventWeather, result.get(0).getEventWeather());
         verify(weatherService).getForecastForDate(location, now.toLocalDate());
+        verify(weatherService).getForecastForTime(location, now);
     }
 
     @Test

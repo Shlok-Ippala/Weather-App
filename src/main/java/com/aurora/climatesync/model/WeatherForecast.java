@@ -10,8 +10,7 @@ public class WeatherForecast {
     private String condition;
     private double precipitationChance;   // 0.0–1.0
     private double windSpeed;
-    private String conditionIcon;
-
+    private Double currentTemperature; // Nullable, only for "Today"
 
     public WeatherForecast(LocalDate date,
                            double maxTemperature,
@@ -19,6 +18,16 @@ public class WeatherForecast {
                            String condition,
                            double precipitationChance,
                            double windSpeed) {
+        this(date, maxTemperature, minTemperature, condition, precipitationChance, windSpeed, null);
+    }
+
+    public WeatherForecast(LocalDate date,
+                           double maxTemperature,
+                           double minTemperature,
+                           String condition,
+                           double precipitationChance,
+                           double windSpeed,
+                           Double currentTemperature) {
 
         this.date = date;
         this.maxTemperature = maxTemperature;
@@ -26,40 +35,8 @@ public class WeatherForecast {
         this.condition = condition;
         this.precipitationChance = precipitationChance;
         this.windSpeed = windSpeed;
-
-        switch (condition.toLowerCase()) {
-            case "rain":
-            case "rainy":
-                this.conditionIcon = "🌧️";
-                break;
-
-            case "sunny":
-                this.conditionIcon = "☀️";
-                break;
-
-            case "cloudy":
-                this.conditionIcon = "☁️";
-                break;
-
-            case "windy":
-                this.conditionIcon = "💨";
-                break;
-
-            case "snow":
-                this.conditionIcon = "❄️";
-                break;
-
-            case "thunderstorm":
-                this.conditionIcon = "⛈️";
-                break;
-
-            default:
-                this.conditionIcon = "🌤️";   // partly cloudy default
-                break;
-        }
+        this.currentTemperature = currentTemperature;
     }
-
-    // GETTERS
 
     public LocalDate getDate() {
         return date;
@@ -85,13 +62,24 @@ public class WeatherForecast {
         return windSpeed;
     }
 
-    public String getConditionIcon() {
-        return conditionIcon;
+    public Double getCurrentTemperature() {
+        return currentTemperature;
+    }
+
+    public void setCurrentTemperature(Double currentTemperature) {
+        this.currentTemperature = currentTemperature;
     }
 
     @Override
     public String toString() {
-        return date + " " + condition + " " + conditionIcon +
-                " H:" + maxTemperature + "°  L:" + minTemperature + "°";
+        return "WeatherForecast{" +
+                "date=" + date +
+                ", maxTemperature=" + maxTemperature +
+                ", minTemperature=" + minTemperature +
+                ", condition='" + condition + '\'' +
+                ", precipitationChance=" + precipitationChance +
+                ", windSpeed=" + windSpeed +
+                ", currentTemperature=" + currentTemperature +
+                '}';
     }
 }

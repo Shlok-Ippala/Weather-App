@@ -55,7 +55,6 @@ class ModelTest {
         assertEquals("Sunny", forecast.getCondition());
         assertEquals(0.0, forecast.getPrecipitationChance());
         assertEquals(5.0, forecast.getWindSpeed());
-        assertEquals("☀️", forecast.getConditionIcon());
         
         assertTrue(forecast.toString().contains("Sunny"));
     }
