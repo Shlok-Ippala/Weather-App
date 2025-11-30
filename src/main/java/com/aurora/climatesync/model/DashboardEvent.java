@@ -3,10 +3,12 @@ package com.aurora.climatesync.model;
 public class DashboardEvent {
     private CalendarEvent calendarEvent;
     private WeatherForecast weatherForecast;
+    private int weatherCode;
 
-    public DashboardEvent(CalendarEvent calendarEvent, WeatherForecast weatherForecast) {
+    public DashboardEvent(CalendarEvent calendarEvent, WeatherForecast weatherForecast, int weatherCode) {
         this.calendarEvent = calendarEvent;
         this.weatherForecast = weatherForecast;
+        this.weatherCode = weatherCode;
     }
 
     public CalendarEvent getCalendarEvent() {
@@ -23,5 +25,13 @@ public class DashboardEvent {
 
     public void setWeatherForecast(WeatherForecast weatherForecast) {
         this.weatherForecast = weatherForecast;
+    }
+
+    public int getWeatherCode() {
+        return weatherCode;
+    }
+
+    public void setWeatherCode(int weatherCode) {
+        this.weatherCode = weatherCode;
     }
 }

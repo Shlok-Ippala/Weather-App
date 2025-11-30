@@ -34,15 +34,24 @@ public class DashboardServiceImpl implements DashboardService {
 
         for (CalendarEvent event : events) {
             WeatherForecast forecast = null;
+            int weathercode = 0;
             if (event.getEventLocation() != null) {
                 try {
-                    forecast = weatherService.getForecastForDate(event.getEventLocation(), event.getStartTime().toLocalDate());
+                    forecast = weatherService.getForecastForDate(
+                            event.getEventLocation(),
+                            event.getStartTime().toLocalDate()
+                    );
+
+                    if (forecast != null) {
+                        weathercode = forecast.getWeatherCode();
+                    }
+
                 } catch (Exception e) {
                     // Log error but continue processing other events
                     logger.error("Could not fetch weather for event: {}", event.getSummary(), e);
                 }
             }
-            dashboardEvents.add(new DashboardEvent(event, forecast));
+            dashboardEvents.add(new DashboardEvent(event, forecast, weathercode));
         }
 
         return dashboardEvents;

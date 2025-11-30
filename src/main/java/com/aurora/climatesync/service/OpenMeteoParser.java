@@ -51,7 +51,8 @@ public class OpenMeteoParser {
                     minT,
                     condition,
                     precipitationChance,
-                    0 // windSpeed not in this query
+                    0, // windSpeed not in this query
+                    code
             ));
         }
         return forecasts;

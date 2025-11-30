@@ -5,6 +5,7 @@ import com.aurora.climatesync.model.DashboardEvent;
 import com.aurora.climatesync.service.CalendarService;
 import com.aurora.climatesync.service.DashboardService;
 import com.aurora.climatesync.util.EventColorUtil;
+import com.aurora.climatesync.util.WeatherIconLoader;
 import com.aurora.climatesync.view.component.DayViewPanel;
 import com.aurora.climatesync.view.component.MonthViewPanel;
 import com.aurora.climatesync.view.component.WeekViewPanel;
@@ -318,7 +319,7 @@ public class DashboardView extends JPanel {
 
     private void showAddEventDialog() {
         new AddEventDialog((Frame) SwingUtilities.getWindowAncestor(this), calendarService, newEvent -> {
-            DashboardEvent de = new DashboardEvent(newEvent, null);
+            DashboardEvent de = new DashboardEvent(newEvent, null, 0);
             allEvents.add(de);
             allEvents.sort((e1, e2) -> e1.getCalendarEvent().getStartTime().compareTo(e2.getCalendarEvent().getStartTime()));
             updateView();
@@ -433,8 +434,12 @@ public class DashboardView extends JPanel {
         weatherPanel.setOpaque(false);
         
         if (de.getWeatherForecast() != null) {
-            JLabel iconLabel = new JLabel(de.getWeatherForecast().getConditionIcon()); 
-            iconLabel.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 28));
+            String iconName = WeatherClimateMapper.getIcon(de.getWeatherCode());
+            ImageIcon icon = WeatherIconLoader.load(iconName);
+
+            JLabel iconLabel = new JLabel();
+            iconLabel.setIcon(icon);
+            weatherPanel.add(iconLabel);
             
             String tempStr = String.format("%d° / %d°", 
                     Math.round(de.getWeatherForecast().getMinTemperature()), 
@@ -445,10 +450,23 @@ public class DashboardView extends JPanel {
             weatherPanel.add(tempLabel);
             weatherPanel.add(iconLabel);
         } else {
-            JLabel noWeather = new JLabel("No Weather");
-            noWeather.setFont(new Font("Segoe UI", Font.ITALIC, 11));
-            noWeather.setForeground(Color.LIGHT_GRAY);
-            weatherPanel.add(noWeather);
+            JPanel noWeatherPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+            noWeatherPanel.setOpaque(false);
+
+            // By setting, if the icon is not inside the map, then it comes to default.
+            String defaultIcon = WeatherClimateMapper.getIcon(-1);
+            ImageIcon icon = WeatherIconLoader.load(defaultIcon);
+
+            JLabel iconLabel = new JLabel(icon);
+
+            JLabel textLabel = new JLabel("No Weather Available");
+            textLabel.setFont(new Font("Segoe UI", Font.ITALIC, 11));
+            textLabel.setForeground(Color.LIGHT_GRAY);
+
+            noWeatherPanel.add(iconLabel);
+            noWeatherPanel.add(textLabel);
+
+            weatherPanel.add(noWeatherPanel);
         }
         
         JButton editButton = new JButton("Edit");

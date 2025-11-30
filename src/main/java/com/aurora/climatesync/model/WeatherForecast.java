@@ -11,6 +11,7 @@ public class WeatherForecast {
     private double precipitationChance;   // 0.0–1.0
     private double windSpeed;
     private String conditionIcon;
+    private int weatherCode;
 
 
     public WeatherForecast(LocalDate date,
@@ -18,7 +19,9 @@ public class WeatherForecast {
                            double minTemperature,
                            String condition,
                            double precipitationChance,
-                           double windSpeed) {
+                           double windSpeed,
+                           int weatherCode
+    ) {
 
         this.date = date;
         this.maxTemperature = maxTemperature;
@@ -26,6 +29,7 @@ public class WeatherForecast {
         this.condition = condition;
         this.precipitationChance = precipitationChance;
         this.windSpeed = windSpeed;
+        this.weatherCode = weatherCode;
 
         switch (condition.toLowerCase()) {
             case "rain":
@@ -87,6 +91,10 @@ public class WeatherForecast {
 
     public String getConditionIcon() {
         return conditionIcon;
+    }
+
+    public int getWeatherCode() {
+        return weatherCode;
     }
 
     @Override
