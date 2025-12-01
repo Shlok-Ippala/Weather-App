@@ -2,6 +2,7 @@ package com.aurora.climatesync.service;
 
 import com.aurora.climatesync.exception.LocationNotFoundException;
 import com.aurora.climatesync.model.EventWeather;
+import com.aurora.climatesync.model.HourlyForecast;
 import com.aurora.climatesync.model.Location;
 import com.aurora.climatesync.model.WeatherForecast;
 import com.aurora.climatesync.repository.WeatherRepository;
@@ -40,6 +41,21 @@ public class WeatherServiceImpl implements WeatherService {
         }
 
         return getWeeklyForecast(location.getLatitude(), location.getLongitude());
+    }
+
+    @Override
+    public List<HourlyForecast> getHourlyForecast(Location location, LocalDate date) {
+        if ((location.getLatitude() == 0.0 && location.getLongitude() == 0.0)
+                && location.getCityName() != null && !location.getCityName().isEmpty()
+                && !location.getCityName().equalsIgnoreCase("Unknown")) {
+            weatherRepository.resolveLocation(location);
+        }
+
+        if (location.getLatitude() == 0.0 && location.getLongitude() == 0.0) {
+            throw new LocationNotFoundException("Could not find location: " + location.getCityName());
+        }
+
+        return weatherRepository.fetchHourlyForecast(location.getLatitude(), location.getLongitude(), date);
     }
 
     @Override

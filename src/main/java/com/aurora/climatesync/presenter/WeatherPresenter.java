@@ -1,12 +1,14 @@
 package com.aurora.climatesync.presenter;
 
 import com.aurora.climatesync.exception.LocationNotFoundException;
+import com.aurora.climatesync.model.HourlyForecast;
 import com.aurora.climatesync.model.Location;
 import com.aurora.climatesync.model.WeatherForecast;
 import com.aurora.climatesync.service.WeatherService;
 import com.aurora.climatesync.util.WeatherIconMapper;
 
 import javax.swing.*;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
@@ -41,22 +43,24 @@ public class WeatherPresenter implements WeatherContract.Presenter {
 
         view.showLoading("Fetching weather for " + displayLocation + "...");
 
-        new SwingWorker<List<WeatherViewModel>, Void>() {
+        new SwingWorker<WeatherResult, Void>() {
             private Location resolvedLocation;
 
             @Override
-            protected List<WeatherViewModel> doInBackground() throws Exception {
+            protected WeatherResult doInBackground() throws Exception {
                 resolvedLocation = new Location(city, country, 0.0, 0.0);
                 List<WeatherForecast> forecasts = weatherService.getWeeklyForecast(resolvedLocation);
-                return forecasts.stream()
+                List<HourlyForecast> hourlyForecasts = weatherService.getHourlyForecast(resolvedLocation, LocalDate.now());
+                List<WeatherViewModel> viewModels = forecasts.stream()
                         .map(WeatherPresenter.this::mapToViewModel)
                         .collect(Collectors.toList());
+                return new WeatherResult(viewModels, hourlyForecasts);
             }
 
             @Override
             protected void done() {
                 try {
-                    List<WeatherViewModel> viewModels = get();
+                    WeatherResult result = get();
                     view.hideLoading();
                     
                     String displayName = resolvedLocation.getCityName();
@@ -64,7 +68,8 @@ public class WeatherPresenter implements WeatherContract.Presenter {
                         displayName += ", " + resolvedLocation.getCountry();
                     }
                     
-                    view.showWeather(displayName, viewModels);
+                    view.showWeather(displayName, result.viewModels);
+                    view.updateChart(result.hourlyForecasts);
                 } catch (InterruptedException | ExecutionException e) {
                     view.hideLoading();
                     Throwable cause = e.getCause() != null ? e.getCause() : e;
@@ -105,5 +110,18 @@ public class WeatherPresenter implements WeatherContract.Presenter {
                 precip,
                 wind
         );
+    }
+
+    /**
+     * Internal class to hold view models and hourly forecasts together.
+     */
+    private static class WeatherResult {
+        final List<WeatherViewModel> viewModels;
+        final List<HourlyForecast> hourlyForecasts;
+
+        WeatherResult(List<WeatherViewModel> viewModels, List<HourlyForecast> hourlyForecasts) {
+            this.viewModels = viewModels;
+            this.hourlyForecasts = hourlyForecasts;
+        }
     }
 }
