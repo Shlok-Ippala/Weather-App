@@ -34,8 +34,8 @@ public class WeatherClimateMapper {
             Map.entry(65, "heavy_rain.png."),
 
             // Snow
-            Map.entry(71, "snow.svg.png"),
-            Map.entry(73, "snow.svg.png"),
+            Map.entry(71, "showers_snow.svg.png"),
+            Map.entry(73, "showers_snow.svg.png"),
             Map.entry(75, "heavy_snow.png"),
             Map.entry(77, "snow.svg.png"),
 

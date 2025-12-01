@@ -1,5 +1,7 @@
 package com.aurora.climatesync.presenter;
 
+import com.aurora.climatesync.model.WeatherForecast;
+
 import java.awt.Color;
 import java.time.ZonedDateTime;
 
@@ -15,10 +17,13 @@ public class DashboardViewModel {
     private final String temperatureDisplay;
     private final String weatherMessage;
     private final Object sourceEvent; // The original event object for actions
+    private final int weatherCode;
+    private final WeatherForecast weatherForecast;
 
-    public DashboardViewModel(String eventId, String title, String description, String location, 
+    public DashboardViewModel(String eventId, String title, String description, String location,
                               ZonedDateTime startTime, ZonedDateTime endTime, String colorId,
-                              String weatherIcon, String temperatureDisplay, String weatherMessage, Object sourceEvent) {
+                              String weatherIcon, String temperatureDisplay, String weatherMessage,
+                              Object sourceEvent, int weatherCode, WeatherForecast weatherForecast) {
         this.eventId = eventId;
         this.title = title;
         this.description = description;
@@ -30,6 +35,8 @@ public class DashboardViewModel {
         this.temperatureDisplay = temperatureDisplay;
         this.weatherMessage = weatherMessage;
         this.sourceEvent = sourceEvent;
+        this.weatherCode =  weatherCode;
+        this.weatherForecast = weatherForecast;
     }
 
     public String getEventId() { return eventId; }
@@ -43,4 +50,6 @@ public class DashboardViewModel {
     public String getTemperatureDisplay() { return temperatureDisplay; }
     public String getWeatherMessage() { return weatherMessage; }
     public Object getSourceEvent() { return sourceEvent; }
+    public int getWeatherCode() { return weatherCode; }
+    public WeatherForecast getWeatherForecast() { return weatherForecast; }
 }

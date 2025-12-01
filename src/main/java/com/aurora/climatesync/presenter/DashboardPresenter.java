@@ -2,6 +2,7 @@ package com.aurora.climatesync.presenter;
 
 import com.aurora.climatesync.model.CalendarEvent;
 import com.aurora.climatesync.model.DashboardEvent;
+import com.aurora.climatesync.model.WeatherForecast;
 import com.aurora.climatesync.service.CalendarService;
 import com.aurora.climatesync.service.DashboardService;
 import com.aurora.climatesync.util.WeatherIconMapper;
@@ -79,22 +80,27 @@ public class DashboardPresenter implements DashboardContract.Presenter {
         String weatherIcon = null;
         String tempDisplay = null;
         String weatherMessage = null;
+        int weatherCode = -1;
 
-        if (event.getEventWeather() != null) {
-            String condition = event.getEventWeather().getCondition();
+        WeatherForecast wf = event.getWeatherForecast();
+
+        if (wf != null) {
+            weatherCode = wf.getWeathercode();
+
+            // Condition
+            String condition = wf.getCondition();
+
+            // Icon
             weatherIcon = WeatherIconMapper.getIconForCondition(condition);
-            tempDisplay = String.format("%.1f°C", event.getEventWeather().getTemperature());
-            weatherMessage = generateWeatherMessage(condition);
-        } else if (event.getWeatherForecast() != null) {
-            String condition = event.getWeatherForecast().getCondition();
-            weatherIcon = WeatherIconMapper.getIconForCondition(condition);
-            if (event.getWeatherForecast().getCurrentTemperature() != null) {
-                tempDisplay = String.format("%.1f°C", event.getWeatherForecast().getCurrentTemperature());
+
+            // Temperature
+            if (wf.getCurrentTemperature() != null) {
+                tempDisplay = String.format("%.1f°C", wf.getCurrentTemperature());
             } else {
-                tempDisplay = String.format("%.0f-%.0f°C", 
-                    event.getWeatherForecast().getMinTemperature(), 
-                    event.getWeatherForecast().getMaxTemperature());
+                tempDisplay = String.format("%.0f°-%.0f°C", wf.getMinTemperature(), wf.getMaxTemperature());
             }
+
+            // message
             weatherMessage = generateWeatherMessage(condition);
         }
 
@@ -103,6 +109,7 @@ public class DashboardPresenter implements DashboardContract.Presenter {
             locationName = event.getCalendarEvent().getEventLocation().getCityName();
         }
 
+        // return
         return new DashboardViewModel(
                 event.getCalendarEvent().getEventID(),
                 event.getCalendarEvent().getSummary(),
@@ -114,7 +121,9 @@ public class DashboardPresenter implements DashboardContract.Presenter {
                 weatherIcon,
                 tempDisplay,
                 weatherMessage,
-                event.getCalendarEvent()
+                event.getCalendarEvent(),
+                weatherCode,
+                event.getWeatherForecast()// ViewModel
         );
     }
 

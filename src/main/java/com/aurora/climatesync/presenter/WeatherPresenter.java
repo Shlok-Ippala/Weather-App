@@ -6,6 +6,7 @@ import com.aurora.climatesync.model.Location;
 import com.aurora.climatesync.model.WeatherForecast;
 import com.aurora.climatesync.service.WeatherService;
 import com.aurora.climatesync.util.WeatherIconMapper;
+import com.aurora.climatesync.view.WeatherClimateMapper;
 
 import javax.swing.*;
 import java.time.LocalDate;
@@ -86,8 +87,10 @@ public class WeatherPresenter implements WeatherContract.Presenter {
     }
 
     private WeatherViewModel mapToViewModel(WeatherForecast forecast) {
-        String icon = WeatherIconMapper.getIconForCondition(forecast.getCondition());
-        
+        // Modify the source of iconFile.
+
+        String iconFile = WeatherClimateMapper.getIcon(forecast.getWeathercode());
+
         String tempDisplay;
         if (forecast.getCurrentTemperature() != null) {
             tempDisplay = Math.round(forecast.getCurrentTemperature()) + "°C";
@@ -106,7 +109,7 @@ public class WeatherPresenter implements WeatherContract.Presenter {
                 tempDisplay,
                 highLow,
                 forecast.getCondition(),
-                icon,
+                iconFile,
                 precip,
                 wind
         );

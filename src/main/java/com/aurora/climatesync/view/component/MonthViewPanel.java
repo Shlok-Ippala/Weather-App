@@ -1,8 +1,11 @@
 package com.aurora.climatesync.view.component;
 
+import com.aurora.climatesync.model.WeatherForecast;
 import com.aurora.climatesync.presenter.DashboardViewModel;
 import com.aurora.climatesync.model.CalendarEvent;
 import com.aurora.climatesync.util.EventColorUtil;
+import com.aurora.climatesync.util.WeatherIconLoader;
+import com.aurora.climatesync.view.WeatherClimateMapper;
 
 import javax.swing.*;
 import java.awt.*;
@@ -106,9 +109,16 @@ public class MonthViewPanel extends JPanel {
                     .filter(e -> e.getWeatherIcon() != null && !e.getWeatherIcon().isEmpty())
                     .findFirst()
                     .orElse(null);
-            
+
+            // Originally it produces Emoji, now it shall produce png for month option!
             if (weatherEvent != null) {
-                JLabel w = new JLabel(weatherEvent.getWeatherIcon() + " ");
+                int code = weatherEvent.getWeatherCode();
+                // Find the corresponding png name!
+                String iconName = WeatherClimateMapper.getIcon(code);
+                // Upload the icon png.
+                ImageIcon icon = WeatherIconLoader.load(iconName);
+
+                JLabel w = new JLabel(icon);
                 w.setHorizontalAlignment(SwingConstants.RIGHT);
                 cell.add(w, BorderLayout.SOUTH);
             }
