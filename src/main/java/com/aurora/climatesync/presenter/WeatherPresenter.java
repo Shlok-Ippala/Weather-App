@@ -41,22 +41,23 @@ public class WeatherPresenter implements WeatherContract.Presenter {
 
         view.showLoading("Fetching weather for " + displayLocation + "...");
 
-        new SwingWorker<List<WeatherViewModel>, Void>() {
+        new SwingWorker<WeatherResult, Void>() {
             private Location resolvedLocation;
 
             @Override
-            protected List<WeatherViewModel> doInBackground() throws Exception {
+            protected WeatherResult doInBackground() throws Exception {
                 resolvedLocation = new Location(city, country, 0.0, 0.0);
                 List<WeatherForecast> forecasts = weatherService.getWeeklyForecast(resolvedLocation);
-                return forecasts.stream()
+                List<WeatherViewModel> viewModels = forecasts.stream()
                         .map(WeatherPresenter.this::mapToViewModel)
                         .collect(Collectors.toList());
+                return new WeatherResult(forecasts, viewModels);
             }
 
             @Override
             protected void done() {
                 try {
-                    List<WeatherViewModel> viewModels = get();
+                    WeatherResult result = get();
                     view.hideLoading();
                     
                     String displayName = resolvedLocation.getCityName();
@@ -64,7 +65,8 @@ public class WeatherPresenter implements WeatherContract.Presenter {
                         displayName += ", " + resolvedLocation.getCountry();
                     }
                     
-                    view.showWeather(displayName, viewModels);
+                    view.showWeather(displayName, result.viewModels);
+                    view.updateChart(result.forecasts);
                 } catch (InterruptedException | ExecutionException e) {
                     view.hideLoading();
                     Throwable cause = e.getCause() != null ? e.getCause() : e;
@@ -105,5 +107,18 @@ public class WeatherPresenter implements WeatherContract.Presenter {
                 precip,
                 wind
         );
+    }
+
+    /**
+     * Internal class to hold both raw forecasts and view models together.
+     */
+    private static class WeatherResult {
+        final List<WeatherForecast> forecasts;
+        final List<WeatherViewModel> viewModels;
+
+        WeatherResult(List<WeatherForecast> forecasts, List<WeatherViewModel> viewModels) {
+            this.forecasts = forecasts;
+            this.viewModels = viewModels;
+        }
     }
 }

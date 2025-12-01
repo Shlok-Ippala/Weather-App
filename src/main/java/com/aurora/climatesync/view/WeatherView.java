@@ -1,7 +1,9 @@
 package com.aurora.climatesync.view;
 
+import com.aurora.climatesync.model.WeatherForecast;
 import com.aurora.climatesync.presenter.WeatherContract;
 import com.aurora.climatesync.presenter.WeatherViewModel;
+import com.aurora.climatesync.view.component.WeatherChartPanel;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -14,6 +16,7 @@ public class WeatherView extends JPanel implements WeatherContract.View {
     private final JTextField searchField;
     private final JLabel statusLabel;
     private final JPanel contentPanel;
+    private final WeatherChartPanel chartPanel;
 
     public WeatherView() {
         this.setLayout(new BorderLayout());
@@ -46,6 +49,11 @@ public class WeatherView extends JPanel implements WeatherContract.View {
         contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
         contentPanel.setBackground(Color.WHITE);
         contentPanel.setBorder(new EmptyBorder(20, 40, 20, 40));
+        
+        // Initialize the weather chart panel
+        chartPanel = new WeatherChartPanel();
+        chartPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        chartPanel.setMaximumSize(new Dimension(750, 320));
         
         JScrollPane scrollPane = new JScrollPane(contentPanel);
         scrollPane.setBorder(null);
@@ -167,7 +175,16 @@ public class WeatherView extends JPanel implements WeatherContract.View {
         contentPanel.add(currentPanel);
         contentPanel.add(Box.createVerticalStrut(30));
 
-        // 2. Weekly Forecast
+        // 2. Temperature Chart (will be populated by updateChart)
+        JLabel chartLabel = new JLabel("Temperature & Precipitation");
+        chartLabel.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        chartLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        contentPanel.add(chartLabel);
+        contentPanel.add(Box.createVerticalStrut(10));
+        contentPanel.add(chartPanel);
+        contentPanel.add(Box.createVerticalStrut(30));
+
+        // 3. Weekly Forecast
         JLabel weeklyLabel = new JLabel("7-Day Forecast");
         weeklyLabel.setFont(new Font("Segoe UI", Font.BOLD, 20));
         weeklyLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -188,6 +205,11 @@ public class WeatherView extends JPanel implements WeatherContract.View {
         
         contentPanel.revalidate();
         contentPanel.repaint();
+    }
+
+    @Override
+    public void updateChart(List<WeatherForecast> forecasts) {
+        chartPanel.updateChart(forecasts);
     }
 
     private JTextField createStyledTextField(String placeholder) {
