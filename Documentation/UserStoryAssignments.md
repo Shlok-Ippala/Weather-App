@@ -79,22 +79,23 @@ This document outlines the primary user stories for the Minimal Viable Product (
 
 ### 5. Shlok (Frontend/GUI - Weather Chart)
 
-*   **User Story:** As a user, I want to see a visual weather chart displaying temperature trends and precipitation probability for the 7-day forecast, so I can quickly understand the weather patterns at a glance without reading individual numbers.
-*   **Story Description:** This story focuses on creating a Google-style weather chart component using JFreeChart. The chart displays high and low temperatures as colored line graphs with data points, and precipitation probability as semi-transparent bar overlays on a secondary axis. The component integrates into the existing Weather tab and updates dynamically when a user searches for a new location.
+*   **User Story:** As a user, I want to see a visual weather chart displaying hourly temperature trends and precipitation probability throughout the current day, so I can quickly understand how the weather will change hour by hour.
+*   **Story Description:** This story focuses on creating a Google-style weather chart component using JFreeChart. The chart displays hourly temperatures as a colored line graph with data points, and precipitation probability as semi-transparent bar overlays on a secondary axis. The component integrates into the existing Weather tab and updates dynamically when a user searches for a new location.
 *   **Acceptance Criteria:**
     *   [ ] A `WeatherChartPanel` component is created using JFreeChart library.
-    *   [ ] The chart displays high temperatures as a coral red line with circular data points.
-    *   [ ] The chart displays low temperatures as a teal line with circular data points.
+    *   [ ] The chart displays hourly temperature as a coral red line with circular data points.
     *   [ ] Precipitation probability is shown as blue semi-transparent bars on a secondary Y-axis (0-100%).
-    *   [ ] The X-axis displays day labels in "EEE M/d" format (e.g., "Mon 12/1") angled at 45° for readability.
+    *   [ ] The X-axis displays hour labels in "ha" format (e.g., "9AM", "2PM") angled at 45° for readability.
     *   [ ] The chart updates automatically when weather data is fetched for a new location.
-    *   [ ] The chart handles edge cases gracefully (null data, empty list, single day, extreme temperatures).
+    *   [ ] The chart handles edge cases gracefully (null data, empty list, single hour, extreme temperatures).
     *   [ ] The chart appears between the current weather display and the 7-day forecast list in the Weather tab.
+    *   [ ] An `HourlyForecast` model is created to store hourly weather data.
 *   **Definition of Done:**
     *   [ ] All code is reviewed, approved, and merged into the `main` branch.
     *   [ ] JFreeChart dependency (v1.5.4) is added to `pom.xml`.
     *   [ ] Unit tests are written for `WeatherChartPanel` covering initialization, valid data rendering, and edge cases.
-    *   [ ] The `WeatherContract.View` interface is updated to include the `updateChart()` method.
+    *   [ ] The `WeatherContract.View` interface is updated to include the `updateChart(List<HourlyForecast>)` method.
+    *   [ ] The `WeatherService` and `WeatherRepository` are updated to support fetching hourly forecasts.
     *   [ ] The chart is visually inspected to ensure proper rendering, label visibility, and color accuracy.
 
 ---

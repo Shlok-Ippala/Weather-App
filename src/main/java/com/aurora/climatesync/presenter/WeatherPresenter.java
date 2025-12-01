@@ -1,12 +1,14 @@
 package com.aurora.climatesync.presenter;
 
 import com.aurora.climatesync.exception.LocationNotFoundException;
+import com.aurora.climatesync.model.HourlyForecast;
 import com.aurora.climatesync.model.Location;
 import com.aurora.climatesync.model.WeatherForecast;
 import com.aurora.climatesync.service.WeatherService;
 import com.aurora.climatesync.util.WeatherIconMapper;
 
 import javax.swing.*;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
@@ -48,10 +50,11 @@ public class WeatherPresenter implements WeatherContract.Presenter {
             protected WeatherResult doInBackground() throws Exception {
                 resolvedLocation = new Location(city, country, 0.0, 0.0);
                 List<WeatherForecast> forecasts = weatherService.getWeeklyForecast(resolvedLocation);
+                List<HourlyForecast> hourlyForecasts = weatherService.getHourlyForecast(resolvedLocation, LocalDate.now());
                 List<WeatherViewModel> viewModels = forecasts.stream()
                         .map(WeatherPresenter.this::mapToViewModel)
                         .collect(Collectors.toList());
-                return new WeatherResult(forecasts, viewModels);
+                return new WeatherResult(viewModels, hourlyForecasts);
             }
 
             @Override
@@ -66,7 +69,7 @@ public class WeatherPresenter implements WeatherContract.Presenter {
                     }
                     
                     view.showWeather(displayName, result.viewModels);
-                    view.updateChart(result.forecasts);
+                    view.updateChart(result.hourlyForecasts);
                 } catch (InterruptedException | ExecutionException e) {
                     view.hideLoading();
                     Throwable cause = e.getCause() != null ? e.getCause() : e;
@@ -110,15 +113,15 @@ public class WeatherPresenter implements WeatherContract.Presenter {
     }
 
     /**
-     * Internal class to hold both raw forecasts and view models together.
+     * Internal class to hold view models and hourly forecasts together.
      */
     private static class WeatherResult {
-        final List<WeatherForecast> forecasts;
         final List<WeatherViewModel> viewModels;
+        final List<HourlyForecast> hourlyForecasts;
 
-        WeatherResult(List<WeatherForecast> forecasts, List<WeatherViewModel> viewModels) {
-            this.forecasts = forecasts;
+        WeatherResult(List<WeatherViewModel> viewModels, List<HourlyForecast> hourlyForecasts) {
             this.viewModels = viewModels;
+            this.hourlyForecasts = hourlyForecasts;
         }
     }
 }

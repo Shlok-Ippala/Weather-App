@@ -1,6 +1,6 @@
 package com.aurora.climatesync.view;
 
-import com.aurora.climatesync.model.WeatherForecast;
+import com.aurora.climatesync.model.HourlyForecast;
 import com.aurora.climatesync.presenter.WeatherContract;
 import com.aurora.climatesync.presenter.WeatherViewModel;
 import com.aurora.climatesync.view.component.WeatherChartPanel;
@@ -175,8 +175,8 @@ public class WeatherView extends JPanel implements WeatherContract.View {
         contentPanel.add(currentPanel);
         contentPanel.add(Box.createVerticalStrut(30));
 
-        // 2. Temperature Chart (will be populated by updateChart)
-        JLabel chartLabel = new JLabel("Temperature & Precipitation");
+        // 2. Today's Hourly Chart (will be populated by updateChart)
+        JLabel chartLabel = new JLabel("Today's Temperature");
         chartLabel.setFont(new Font("Segoe UI", Font.BOLD, 20));
         chartLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         contentPanel.add(chartLabel);
@@ -208,8 +208,8 @@ public class WeatherView extends JPanel implements WeatherContract.View {
     }
 
     @Override
-    public void updateChart(List<WeatherForecast> forecasts) {
-        chartPanel.updateChart(forecasts);
+    public void updateChart(List<HourlyForecast> hourlyForecasts) {
+        chartPanel.updateChart(hourlyForecasts);
     }
 
     private JTextField createStyledTextField(String placeholder) {

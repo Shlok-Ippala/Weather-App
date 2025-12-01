@@ -1,6 +1,6 @@
 package com.aurora.climatesync.presenter;
 
-import com.aurora.climatesync.model.WeatherForecast;
+import com.aurora.climatesync.model.HourlyForecast;
 
 import java.util.List;
 
@@ -9,7 +9,7 @@ public interface WeatherContract {
         void showLoading(String message);
         void hideLoading();
         void showWeather(String city, List<WeatherViewModel> forecasts);
-        void updateChart(List<WeatherForecast> forecasts);
+        void updateChart(List<HourlyForecast> hourlyForecasts);
         void showError(String message);
     }
 

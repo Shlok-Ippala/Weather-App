@@ -1,6 +1,7 @@
 package com.aurora.climatesync.infrastructure.weather;
 
 import com.aurora.climatesync.model.EventWeather;
+import com.aurora.climatesync.model.HourlyForecast;
 import com.aurora.climatesync.model.Location;
 import com.aurora.climatesync.model.WeatherForecast;
 import com.aurora.climatesync.repository.WeatherRepository;
@@ -117,6 +118,61 @@ public class OpenMeteoWeatherRepository implements WeatherRepository {
                         windSpeed,
                         todayCurrentTemp
                 ));
+            }
+
+            return forecasts;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new ArrayList<>();
+        }
+    }
+
+    @Override
+    public List<HourlyForecast> fetchHourlyForecast(double latitude, double longitude, LocalDate date) {
+        try {
+            String dateStr = date.toString();
+            
+            String url = UriComponentsBuilder
+                    .fromUriString(forecastApiUrl)
+                    .queryParam("latitude", latitude)
+                    .queryParam("longitude", longitude)
+                    .queryParam("hourly", "temperature_2m,precipitation_probability,weathercode,windspeed_10m")
+                    .queryParam("start_date", dateStr)
+                    .queryParam("end_date", dateStr)
+                    .queryParam("timezone", "auto")
+                    .toUriString();
+
+            String json = restTemplate.getForObject(url, String.class);
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode root = mapper.readTree(json);
+
+            List<HourlyForecast> forecasts = new ArrayList<>();
+
+            if (root == null || !root.has("hourly")) {
+                return forecasts;
+            }
+
+            JsonNode hourly = root.get("hourly");
+            JsonNode times = hourly.get("time");
+            JsonNode temps = hourly.get("temperature_2m");
+            JsonNode precip = hourly.get("precipitation_probability");
+            JsonNode codes = hourly.get("weathercode");
+            JsonNode winds = hourly.get("windspeed_10m");
+
+            if (times == null || !times.isArray()) {
+                return forecasts;
+            }
+
+            for (int i = 0; i < times.size(); i++) {
+                LocalDateTime dateTime = LocalDateTime.parse(times.get(i).asText());
+                double temp = temps != null ? temps.get(i).asDouble() : 0.0;
+                double precipitation = precip != null ? precip.get(i).asDouble() / 100.0 : 0.0;
+                int code = codes != null ? codes.get(i).asInt() : 0;
+                double wind = winds != null ? winds.get(i).asDouble() : 0.0;
+                
+                String condition = mapWeatherCode(code);
+                
+                forecasts.add(new HourlyForecast(dateTime, temp, precipitation, condition, wind));
             }
 
             return forecasts;

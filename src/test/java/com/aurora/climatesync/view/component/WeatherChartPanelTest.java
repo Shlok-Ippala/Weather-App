@@ -1,12 +1,12 @@
 package com.aurora.climatesync.view.component;
 
-import com.aurora.climatesync.model.WeatherForecast;
+import com.aurora.climatesync.model.HourlyForecast;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import javax.swing.*;
 import java.awt.*;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -38,8 +38,8 @@ class WeatherChartPanelTest {
     }
 
     @Test
-    void testUpdateChartWithValidData() {
-        List<WeatherForecast> forecasts = createSampleForecasts(7);
+    void testUpdateChartWithValidHourlyData() {
+        List<HourlyForecast> forecasts = createSampleHourlyForecasts(24);
         
         assertDoesNotThrow(() -> {
             SwingUtilities.invokeAndWait(() -> {
@@ -67,8 +67,8 @@ class WeatherChartPanelTest {
     }
 
     @Test
-    void testUpdateChartWithSingleDay() {
-        List<WeatherForecast> forecasts = createSampleForecasts(1);
+    void testUpdateChartWithSingleHour() {
+        List<HourlyForecast> forecasts = createSampleHourlyForecasts(1);
         
         assertDoesNotThrow(() -> {
             SwingUtilities.invokeAndWait(() -> {
@@ -79,9 +79,10 @@ class WeatherChartPanelTest {
 
     @Test
     void testUpdateChartWithExtremeTemperatures() {
-        List<WeatherForecast> forecasts = Arrays.asList(
-            new WeatherForecast(LocalDate.now(), 50.0, -30.0, "Extreme", 0.5, 100.0),
-            new WeatherForecast(LocalDate.now().plusDays(1), 45.0, -25.0, "Extreme", 0.8, 80.0)
+        LocalDateTime now = LocalDateTime.now();
+        List<HourlyForecast> forecasts = Arrays.asList(
+            new HourlyForecast(now, 45.0, 0.5, "Hot", 5.0),
+            new HourlyForecast(now.plusHours(1), -20.0, 0.8, "Cold", 10.0)
         );
         
         assertDoesNotThrow(() -> {
@@ -93,9 +94,10 @@ class WeatherChartPanelTest {
 
     @Test
     void testUpdateChartWithZeroPrecipitation() {
-        List<WeatherForecast> forecasts = Arrays.asList(
-            new WeatherForecast(LocalDate.now(), 25.0, 15.0, "Sunny", 0.0, 5.0),
-            new WeatherForecast(LocalDate.now().plusDays(1), 26.0, 16.0, "Clear", 0.0, 3.0)
+        LocalDateTime now = LocalDateTime.now();
+        List<HourlyForecast> forecasts = Arrays.asList(
+            new HourlyForecast(now, 25.0, 0.0, "Sunny", 5.0),
+            new HourlyForecast(now.plusHours(1), 26.0, 0.0, "Clear", 3.0)
         );
         
         assertDoesNotThrow(() -> {
@@ -107,9 +109,10 @@ class WeatherChartPanelTest {
 
     @Test
     void testUpdateChartWithFullPrecipitation() {
-        List<WeatherForecast> forecasts = Arrays.asList(
-            new WeatherForecast(LocalDate.now(), 20.0, 15.0, "Rain", 1.0, 20.0),
-            new WeatherForecast(LocalDate.now().plusDays(1), 18.0, 14.0, "Storm", 1.0, 40.0)
+        LocalDateTime now = LocalDateTime.now();
+        List<HourlyForecast> forecasts = Arrays.asList(
+            new HourlyForecast(now, 20.0, 1.0, "Rain", 20.0),
+            new HourlyForecast(now.plusHours(1), 18.0, 1.0, "Storm", 40.0)
         );
         
         assertDoesNotThrow(() -> {
@@ -121,7 +124,6 @@ class WeatherChartPanelTest {
 
     @Test
     void testChartPanelPreferredSize() {
-        // Chart panel should have a reasonable preferred size
         Dimension prefSize = chartPanel.getPreferredSize();
         assertTrue(prefSize.width > 0, "Preferred width should be positive");
         assertTrue(prefSize.height > 0, "Preferred height should be positive");
@@ -129,36 +131,33 @@ class WeatherChartPanelTest {
 
     @Test
     void testMultipleChartUpdates() {
-        // Test that the chart can be updated multiple times without issues
         assertDoesNotThrow(() -> {
             SwingUtilities.invokeAndWait(() -> {
-                chartPanel.updateChart(createSampleForecasts(3));
-                chartPanel.updateChart(createSampleForecasts(7));
+                chartPanel.updateChart(createSampleHourlyForecasts(6));
+                chartPanel.updateChart(createSampleHourlyForecasts(24));
                 chartPanel.updateChart(null);
-                chartPanel.updateChart(createSampleForecasts(5));
+                chartPanel.updateChart(createSampleHourlyForecasts(12));
             });
         });
     }
 
     /**
-     * Helper method to create sample weather forecasts for testing.
+     * Helper method to create sample hourly forecasts for testing.
      */
-    private List<WeatherForecast> createSampleForecasts(int days) {
-        List<WeatherForecast> forecasts = new ArrayList<>();
-        LocalDate startDate = LocalDate.now();
+    private List<HourlyForecast> createSampleHourlyForecasts(int hours) {
+        List<HourlyForecast> forecasts = new ArrayList<>();
+        LocalDateTime startTime = LocalDateTime.now().withHour(0).withMinute(0);
         
-        for (int i = 0; i < days; i++) {
-            double maxTemp = 20.0 + (i * 2) + Math.random() * 5;
-            double minTemp = 10.0 + (i * 2) + Math.random() * 3;
-            double precip = Math.random();
-            double wind = 5.0 + Math.random() * 20;
+        for (int i = 0; i < hours; i++) {
+            double temp = 15.0 + 10 * Math.sin(Math.PI * i / 12); // Simulates daily temp curve
+            double precip = Math.random() * 0.5;
+            double wind = 5.0 + Math.random() * 15;
             
-            forecasts.add(new WeatherForecast(
-                startDate.plusDays(i),
-                maxTemp,
-                minTemp,
-                i % 2 == 0 ? "Sunny" : "Cloudy",
+            forecasts.add(new HourlyForecast(
+                startTime.plusHours(i),
+                temp,
                 precip,
+                i < 6 || i > 18 ? "Clear" : "Sunny",
                 wind
             ));
         }
@@ -166,4 +165,3 @@ class WeatherChartPanelTest {
         return forecasts;
     }
 }
-
