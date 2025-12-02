@@ -27,7 +27,7 @@ public class SearchService {
             cleaned = cleaned.split(",")[0].trim(); // takes only "Toronto" from "Toronto, Canada"
         }
 
-        List<Location> results = locationRepository.searchLocations(query.trim(), 1);
+        List<Location> results = locationRepository.searchLocations(cleaned.toLowerCase(), 1);
         return results.isEmpty() ? Location.unknown() : results.get(0);
     }
 }

@@ -28,7 +28,7 @@ public class WeatherServiceTest {
         Location toronto = new Location("Toronto", "Canada", TORONTO_LAT, TORONTO_LON);
         // Stub the mock service to return a 7-day forecast for Toronto
         List<WeatherForecast> mockForecasts = IntStream.range(0, 7)
-            .mapToObj(i -> new WeatherForecast(LocalDate.now().plusDays(i), 10.0, 0.0, "Clear", 0.0, 0.0))
+            .mapToObj(i -> new WeatherForecast(LocalDate.now().plusDays(i), 10.0, 0.0, "Clear", 0.0, 0.0, 1))
             .collect(Collectors.toList());
         Mockito.when(service.getWeeklyForecast(Mockito.eq(toronto))).thenReturn(mockForecasts);
 

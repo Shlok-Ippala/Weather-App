@@ -42,7 +42,7 @@ class DashboardServiceImplTest {
         Location location = new Location("City", "Country", 10.0, 20.0);
         ZonedDateTime now = ZonedDateTime.now();
         CalendarEvent event = new CalendarEvent("1", "Summary", "Desc", now, now.plusHours(1), location, "1");
-        WeatherForecast forecast = new WeatherForecast(now.toLocalDate(), 10.0, 20.0, "Sunny", 0.0, 10.0);
+        WeatherForecast forecast = new WeatherForecast(now.toLocalDate(), 10.0, 20.0, "Sunny", 0.0, 10.0, 1);
         EventWeather eventWeather = new EventWeather(15.0, "Sunny", 0.0, 5.0);
 
         when(calendarService.getUpcomingEvents(anyInt())).thenReturn(Collections.singletonList(event));
