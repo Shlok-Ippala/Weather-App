@@ -68,4 +68,17 @@ class SearchServiceTest {
         searchService.searchLocation("");
         verify(locationRepository, never()).searchLocations(anyString(), anyInt());
     }
+
+    @Test
+    void searchLocation_queryWithComma_usesOnlyFirstPart() {
+        Location toronto = new Location("Toronto", "Canada", 43.7, -79.4);
+
+        when(locationRepository.searchLocations("toronto", 1))
+                .thenReturn(List.of(toronto));
+
+        Location result = searchService.searchLocation("Toronto, Canada");
+
+        assertEquals("Toronto", result.getCityName());
+        verify(locationRepository).searchLocations("toronto", 1);
+    }
 }
