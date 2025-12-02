@@ -76,13 +76,9 @@ public class MonthViewPanel extends JPanel {
             for (int k = 0; k < Math.min(dayEvents.size(), 3); k++) {
                 DashboardViewModel de = dayEvents.get(k);
                 String timeStr = de.getStartTime().format(DateTimeFormatter.ofPattern("ha")).toLowerCase();
-                
-                String weatherIcon = "";
-                if (de.getWeatherIcon() != null) {
-                    weatherIcon = " " + de.getWeatherIcon();
-                }
 
-                JLabel evLabel = new JLabel("• " + timeStr + " " + de.getTitle() + weatherIcon);
+                JLabel evLabel = new JLabel(timeStr + " " + de.getTitle());
+
                 evLabel.setFont(new Font("Arial", Font.PLAIN, 10));
                 evLabel.setForeground(EventColorUtil.getEventColor(de.getColorId()));
                 
