@@ -88,7 +88,6 @@ public class WeatherPresenter implements WeatherContract.Presenter {
 
     private WeatherViewModel mapToViewModel(WeatherForecast forecast) {
         // Modify the source of iconFile.
-
         String iconFile = WeatherClimateMapper.getIcon(forecast.getWeathercode());
 
         String tempDisplay;

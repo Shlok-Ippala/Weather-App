@@ -86,20 +86,16 @@ public class DashboardPresenter implements DashboardContract.Presenter {
 
         if (wf != null) {
             weatherCode = wf.getWeathercode();
-
             // Condition
             String condition = wf.getCondition();
-
             // Icon
             weatherIcon = WeatherIconMapper.getIconForCondition(condition);
-
             // Temperature
             if (wf.getCurrentTemperature() != null) {
                 tempDisplay = String.format("%.1f°C", wf.getCurrentTemperature());
             } else {
                 tempDisplay = String.format("%.0f°-%.0f°C", wf.getMinTemperature(), wf.getMaxTemperature());
             }
-
             // message
             weatherMessage = generateWeatherMessage(condition);
         }

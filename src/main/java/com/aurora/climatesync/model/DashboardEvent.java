@@ -5,14 +5,11 @@ public class DashboardEvent {
     private WeatherForecast weatherForecast;
     private EventWeather eventWeather;
 
-    public DashboardEvent(CalendarEvent calendarEvent,
-                          WeatherForecast weatherForecast) {
+    public DashboardEvent(CalendarEvent calendarEvent, WeatherForecast weatherForecast) {
         this(calendarEvent, weatherForecast, null);
     }
 
-    public DashboardEvent(CalendarEvent calendarEvent,
-                          WeatherForecast weatherForecast,
-                          EventWeather eventWeather) {
+    public DashboardEvent(CalendarEvent calendarEvent, WeatherForecast weatherForecast, EventWeather eventWeather) {
         this.calendarEvent = calendarEvent;
         this.weatherForecast = weatherForecast;
         this.eventWeather = eventWeather;

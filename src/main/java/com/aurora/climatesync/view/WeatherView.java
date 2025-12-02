@@ -25,8 +25,7 @@ public class WeatherView extends JPanel implements WeatherContract.View {
         // --- Header / Search Bar ---
         JPanel headerPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 20));
         headerPanel.setBackground(new Color(245, 245, 245));
-        headerPanel.setBorder(BorderFactory.createMatteBorder(
-                0, 0, 1, 0, new Color(220, 220, 220)));
+        headerPanel.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(220, 220, 220)));
 
         searchField = createStyledTextField("Location (e.g. Toronto, Canada)");
         searchField.setPreferredSize(new Dimension(300, 40));
@@ -249,9 +248,7 @@ public class WeatherView extends JPanel implements WeatherContract.View {
         dayLabel.setPreferredSize(new Dimension(100, 20));
         
         // Icon
-        ImageIcon icon = new ImageIcon(
-                getClass().getResource("/assets/weather-icons/" + wf.getConditionIcon())
-        );
+        ImageIcon icon = new ImageIcon(getClass().getResource("/assets/weather-icons/" + wf.getConditionIcon()));
         JLabel iconLabel = new JLabel(icon);
         iconLabel.setHorizontalAlignment(SwingConstants.CENTER);
         iconLabel.setPreferredSize(new Dimension(50, 50));

@@ -35,12 +35,9 @@ public class OpenMeteoWeatherRepository implements WeatherRepository {
     @Autowired
     public OpenMeteoWeatherRepository(
             RestTemplate restTemplate,
-            @Value("${weather.api.forecast-url:https://api.open-meteo.com/v1/forecast}")
-            String forecastApiUrl,
-            @Value("${weather.api.geocoding-url:https://geocoding-api.open-meteo.com/v1/search}")
-            String geocodingApiUrl,
-            @Value("${weather.api.nominatim-url:https://nominatim.openstreetmap.org/search}")
-            String nominatimApiUrl) {
+            @Value("${weather.api.forecast-url:https://api.open-meteo.com/v1/forecast}") String forecastApiUrl,
+            @Value("${weather.api.geocoding-url:https://geocoding-api.open-meteo.com/v1/search}") String geocodingApiUrl,
+            @Value("${weather.api.nominatim-url:https://nominatim.openstreetmap.org/search}") String nominatimApiUrl) {
         this.restTemplate = restTemplate;
         this.forecastApiUrl = forecastApiUrl;
         this.geocodingApiUrl = geocodingApiUrl;
@@ -267,8 +264,7 @@ public class OpenMeteoWeatherRepository implements WeatherRepository {
             ObjectMapper mapper = new ObjectMapper();
             JsonNode root = mapper.readTree(json);
             
-            if (root.has("results") && root.get("results").isArray()
-                    && root.get("results").size() > 0) {
+            if (root.has("results") && root.get("results").isArray() && root.get("results").size() > 0) {
                 JsonNode results = root.get("results");
                 JsonNode bestMatch = results.get(0); 
 
@@ -319,11 +315,9 @@ public class OpenMeteoWeatherRepository implements WeatherRepository {
                     .queryParam("limit", 1)
                     .toUriString();
 
-            org.springframework.http.HttpHeaders headers =
-                    new org.springframework.http.HttpHeaders();
+            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
             headers.set("User-Agent", "ClimateSync/1.0");
-            org.springframework.http.HttpEntity<String> entity =
-                    new org.springframework.http.HttpEntity<>(headers);
+            org.springframework.http.HttpEntity<String> entity = new org.springframework.http.HttpEntity<>(headers);
 
             org.springframework.http.ResponseEntity<String> response = restTemplate.exchange(
                     url,
