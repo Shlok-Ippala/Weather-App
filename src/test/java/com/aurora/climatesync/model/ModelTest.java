@@ -47,7 +47,7 @@ class ModelTest {
     @Test
     void testWeatherForecast() {
         LocalDate date = LocalDate.now();
-        WeatherForecast forecast = new WeatherForecast(date, 20.0, 10.0, "Sunny", 0.0, 5.0);
+        WeatherForecast forecast = new WeatherForecast(date, 20.0, 10.0, "Sunny", 0.0, 5.0, 1);
         
         assertEquals(date, forecast.getDate());
         assertEquals(20.0, forecast.getMaxTemperature());

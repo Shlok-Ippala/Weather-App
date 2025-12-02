@@ -114,9 +114,19 @@ public class TimeBlockPanel extends JPanel {
 
         // Add weather info if available
         if (de.getWeatherIcon() != null && de.getTemperatureDisplay() != null) {
-            JLabel weatherLabel = new JLabel(de.getWeatherIcon() + " " + de.getTemperatureDisplay());
+            JLabel weatherLabel = new JLabel();
+            try {
+                ImageIcon icon = new ImageIcon(getClass().getResource(de.getWeatherIcon()));
+                Image scaled = icon.getImage().getScaledInstance(14, 14, Image.SCALE_SMOOTH);
+                weatherLabel.setIcon(new ImageIcon(scaled));
+            } catch (Exception e) {
+                // fallback: show text if icon missing
+                weatherLabel.setText(de.getWeatherIcon());
+            }
+            weatherLabel.setText(" " + de.getTemperatureDisplay());
             weatherLabel.setFont(new Font("Arial", Font.PLAIN, 9));
-            weatherLabel.setForeground(new Color(0, 102, 204)); // Dark blue for weather
+            weatherLabel.setForeground(new Color(0, 102, 204));
+
             content.add(weatherLabel);
         }
 

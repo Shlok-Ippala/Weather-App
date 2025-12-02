@@ -76,7 +76,7 @@ public class DashboardPresenter implements DashboardContract.Presenter {
         view.showEvents(filtered);
     }
 
-    private DashboardViewModel mapToViewModel(DashboardEvent event) {
+    public DashboardViewModel mapToViewModel(DashboardEvent event) {
         String weatherIcon = null;
         String tempDisplay = null;
         String weatherMessage = null;

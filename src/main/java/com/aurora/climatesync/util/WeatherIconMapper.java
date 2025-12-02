@@ -3,7 +3,7 @@ package com.aurora.climatesync.util;
 public class WeatherIconMapper {
     public static String getIconForCondition(String condition) {
         if (condition == null) {
-            return "\u2753"; // ❓
+            return "/assets/weather-icons/not_available.png"; // ❓
         }
 
         switch (condition.toLowerCase()) {
@@ -11,34 +11,34 @@ public class WeatherIconMapper {
             case "rainy":
             case "drizzle":
             case "showers":
-                return "\uD83C\uDF27"; // 🌧️
+                return "/assets/weather-icons/showers_rain.svg.png"; // 🌧️
 
             case "sunny":
             case "clear":
-                return "\u2600"; // ☀️
+                return "/assets/weather-icons/clear_day.png"; // ☀️
 
             case "cloudy":
             case "partly cloudy":
             case "overcast":
-                return "\u2601"; // ☁️
+                return "/assets/weather-icons/cloudy.png"; // ☁️
 
             case "windy":
-                return "\uD83D\uDCA8"; // 💨
+                return "/assets/weather-icons/blizzard.png"; // 💨
 
             case "snow":
             case "snowy":
-                return "\u2744"; // ❄️
+                return "/assets/weather-icons/showers_snow.svg.png"; // ❄️
 
             case "storm":
             case "thunderstorm":
-                return "\u26C8"; // ⛈️
+                return "/assets/weather-icons/isolated_thunderstorms.svg.png"; // ⛈️
 
             case "fog":
             case "foggy":
-                return "\uD83C\uDF2B"; // 🌫️
+                return "/assets/weather-icons/haze_fog_dust_smoke.png"; // 🌫️
 
             default:
-                return "\uD83C\uDF24"; // 🌤️
+                return "/assets/weather-icons/not_available.png"; // 🌤️
         }
     }
 }
