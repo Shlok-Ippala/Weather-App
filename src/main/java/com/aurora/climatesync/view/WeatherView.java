@@ -140,8 +140,10 @@ public class WeatherView extends JPanel implements WeatherContract.View {
         gbc.gridy++;
         JPanel tempPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 0));
         tempPanel.setOpaque(false);
-        
-        JLabel iconLabel = new JLabel(today.getConditionIcon());
+
+        String iconPath = "/assets/weather-icons/" + today.getConditionIcon();
+        ImageIcon icon = new ImageIcon(getClass().getResource(iconPath));
+        JLabel iconLabel = new JLabel(icon);
         iconLabel.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 64));
         
         JLabel tempLabel = new JLabel(today.getTemperatureDisplay());
@@ -246,10 +248,10 @@ public class WeatherView extends JPanel implements WeatherContract.View {
         dayLabel.setPreferredSize(new Dimension(100, 20));
         
         // Icon
-        JLabel iconLabel = new JLabel(wf.getConditionIcon());
-        iconLabel.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 20));
+        ImageIcon icon = new ImageIcon(getClass().getResource("/assets/weather-icons/" + wf.getConditionIcon()));
+        JLabel iconLabel = new JLabel(icon);
         iconLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        iconLabel.setPreferredSize(new Dimension(50, 20));
+        iconLabel.setPreferredSize(new Dimension(50, 50));
 
         // Temps
         JLabel tempLabel = new JLabel(wf.getHighLowDisplay());

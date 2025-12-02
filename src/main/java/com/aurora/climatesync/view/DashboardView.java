@@ -7,6 +7,7 @@ import com.aurora.climatesync.presenter.DashboardViewModel;
 import com.aurora.climatesync.service.CalendarService;
 import com.aurora.climatesync.service.DashboardService;
 import com.aurora.climatesync.util.EventColorUtil;
+import com.aurora.climatesync.util.WeatherIconLoader;
 import com.aurora.climatesync.view.component.DayViewPanel;
 import com.aurora.climatesync.view.component.MonthViewPanel;
 import com.aurora.climatesync.view.component.WeekViewPanel;
@@ -389,14 +390,23 @@ public class DashboardView extends JPanel implements DashboardContract.View {
         weatherPanel.setOpaque(false);
         
         if (de.getWeatherIcon() != null && de.getTemperatureDisplay() != null) {
-            JLabel iconLabel = new JLabel(de.getWeatherIcon()); 
-            iconLabel.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 28));
-            
-            JLabel tempLabel = new JLabel(de.getTemperatureDisplay());
-            tempLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
-            
-            weatherPanel.add(tempLabel);
+            int code = de.getWeatherCode();
+            String iconName = WeatherClimateMapper.getIcon(code);
+            ImageIcon icon = WeatherIconLoader.load(iconName);
+
+            JLabel iconLabel = new JLabel(icon);
             weatherPanel.add(iconLabel);
+
+            String tempStr = String.format("%d° / %d°",
+                    Math.round(de.getWeatherForecast().getMinTemperature()),
+                    Math.round(de.getWeatherForecast().getMaxTemperature())
+            );
+
+            JLabel tempLabel = new JLabel(tempStr);
+            tempLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+
+            weatherPanel.add(tempLabel);
+
         } else {
             JLabel noWeather = new JLabel("No Weather");
             noWeather.setFont(new Font("Segoe UI", Font.ITALIC, 11));

@@ -11,14 +11,17 @@ public class WeatherForecast {
     private double precipitationChance;   // 0.0–1.0
     private double windSpeed;
     private Double currentTemperature; // Nullable, only for "Today"
+    private int weathercode;
+    private String iconPath;
 
     public WeatherForecast(LocalDate date,
                            double maxTemperature,
                            double minTemperature,
                            String condition,
                            double precipitationChance,
-                           double windSpeed) {
-        this(date, maxTemperature, minTemperature, condition, precipitationChance, windSpeed, null);
+                           double windSpeed,
+                           int weathercode) {
+        this(date, maxTemperature, minTemperature, condition, precipitationChance, windSpeed, null, weathercode);
     }
 
     public WeatherForecast(LocalDate date,
@@ -27,7 +30,8 @@ public class WeatherForecast {
                            String condition,
                            double precipitationChance,
                            double windSpeed,
-                           Double currentTemperature) {
+                           Double currentTemperature,
+                           int weathercode) {
 
         this.date = date;
         this.maxTemperature = maxTemperature;
@@ -36,6 +40,7 @@ public class WeatherForecast {
         this.precipitationChance = precipitationChance;
         this.windSpeed = windSpeed;
         this.currentTemperature = currentTemperature;
+        this.weathercode = weathercode;
     }
 
     public LocalDate getDate() {
@@ -68,6 +73,22 @@ public class WeatherForecast {
 
     public void setCurrentTemperature(Double currentTemperature) {
         this.currentTemperature = currentTemperature;
+    }
+
+    public int getWeathercode() {
+        return weathercode;
+    }
+
+    public void setWeathercode(int weathercode) {
+        this.weathercode = weathercode;
+    }
+
+    public String getIconPath() {
+        return iconPath;
+    }
+
+    public void setIconPath(String iconPath) {
+        this.iconPath = iconPath;
     }
 
     @Override

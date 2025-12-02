@@ -116,7 +116,8 @@ public class OpenMeteoWeatherRepository implements WeatherRepository {
                         condition,
                         precipitationChance,
                         windSpeed,
-                        todayCurrentTemp
+                        todayCurrentTemp,
+                        code
                 ));
             }
 
