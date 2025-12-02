@@ -5,6 +5,7 @@ import com.aurora.climatesync.model.HourlyForecast;
 import com.aurora.climatesync.model.Location;
 import com.aurora.climatesync.model.WeatherForecast;
 import com.aurora.climatesync.service.WeatherService;
+import com.aurora.climatesync.service.SearchService;
 import com.aurora.climatesync.util.WeatherIconMapper;
 import com.aurora.climatesync.view.WeatherClimateMapper;
 
@@ -17,10 +18,12 @@ import java.util.stream.Collectors;
 public class WeatherPresenter implements WeatherContract.Presenter {
     private final WeatherContract.View view;
     private final WeatherService weatherService;
+    private final SearchService searchService;
 
-    public WeatherPresenter(WeatherContract.View view, WeatherService weatherService) {
+    public WeatherPresenter(WeatherContract.View view, WeatherService weatherService, SearchService searchService) {
         this.view = view;
         this.weatherService = weatherService;
+        this.searchService = searchService;
     }
 
     @Override
@@ -35,21 +38,18 @@ public class WeatherPresenter implements WeatherContract.Presenter {
             view.showError("Please enter a location.");
             return;
         }
-        
-        String[] parts = query.split(",");
-        String city = parts[0].trim();
-        String country = parts.length > 1 ? parts[1].trim() : "";
-        
-        String displayLocation = city + (country.isEmpty() ? "" : ", " + country);
 
-        view.showLoading("Fetching weather for " + displayLocation + "...");
+        view.showLoading("Searching for " + query.trim() + "...");
 
         new SwingWorker<WeatherResult, Void>() {
             private Location resolvedLocation;
 
             @Override
             protected WeatherResult doInBackground() throws Exception {
-                resolvedLocation = new Location(city, country, 0.0, 0.0);
+                resolvedLocation = searchService.searchLocation(query.trim());  // ← REAL LOCATION FROM API
+                if (resolvedLocation.isUnknown()) {
+                    return null;
+                }
                 List<WeatherForecast> forecasts = weatherService.getWeeklyForecast(resolvedLocation);
                 List<HourlyForecast> hourlyForecasts = weatherService.getHourlyForecast(resolvedLocation, LocalDate.now());
                 List<WeatherViewModel> viewModels = forecasts.stream()
@@ -63,24 +63,23 @@ public class WeatherPresenter implements WeatherContract.Presenter {
                 try {
                     WeatherResult result = get();
                     view.hideLoading();
-                    
+
+                    if (result == null || resolvedLocation == null || resolvedLocation.isUnknown()) {
+                        view.showError("Location not found: " + query.trim());
+                        return;
+                    }
+
                     String displayName = resolvedLocation.getCityName();
                     if (resolvedLocation.getCountry() != null && !resolvedLocation.getCountry().isEmpty()) {
                         displayName += ", " + resolvedLocation.getCountry();
                     }
-                    
+
                     view.showWeather(displayName, result.viewModels);
                     view.updateChart(result.hourlyForecasts);
-                } catch (InterruptedException | ExecutionException e) {
+
+                } catch (Exception e) {
                     view.hideLoading();
-                    Throwable cause = e.getCause() != null ? e.getCause() : e;
-                    
-                    if (cause instanceof LocationNotFoundException) {
-                        view.showError("Could not find location: " + displayLocation + ". Please check spelling.");
-                    } else {
-                        view.showError("Error fetching weather: " + cause.getMessage());
-                    }
-                    e.printStackTrace();
+                    view.showError("Location not found: " + query.trim());
                 }
             }
         }.execute();

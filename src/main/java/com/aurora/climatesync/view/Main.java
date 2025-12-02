@@ -1,12 +1,15 @@
 package com.aurora.climatesync.view;
 
 import com.aurora.climatesync.ClimatesyncApplication;
+import com.aurora.climatesync.repository.LocationRepository;
 import com.aurora.climatesync.service.CalendarService;
 import com.aurora.climatesync.service.DashboardService;
 import com.aurora.climatesync.service.WeatherService;
+import com.aurora.climatesync.service.SearchService;
 
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Component;
 
 import javax.swing.*;
@@ -26,7 +29,12 @@ public class Main {
         this.dashboardService = dashboardService;
     }
 
-    private void launchUI() {
+    @Bean
+    public SearchService searchService(LocationRepository locationRepository) {
+        return new SearchService(locationRepository);
+    }
+
+    private void launchUI(ConfigurableApplicationContext context) {
         JFrame frame = new JFrame("ClimateSync");
         frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         frame.setSize(800, 600); // Increased size for better calendar view
@@ -40,7 +48,8 @@ public class Main {
 
         // Weather Tab
         WeatherView weatherView = new WeatherView();
-        WeatherPresenter weatherPresenter = new WeatherPresenter(weatherView, weatherService);
+        SearchService searchService = context.getBean(SearchService.class);
+        WeatherPresenter weatherPresenter = new WeatherPresenter(weatherView, weatherService, searchService);
         weatherView.setPresenter(weatherPresenter);
         
         tabbedPane.addTab("Weather", weatherView);
@@ -56,7 +65,7 @@ public class Main {
 
         SwingUtilities.invokeLater(() -> {
             Main app = context.getBean(Main.class);
-            app.launchUI();
+            app.launchUI(context);
         });
     }
 }
