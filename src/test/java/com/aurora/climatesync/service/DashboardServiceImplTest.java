@@ -109,4 +109,41 @@ class DashboardServiceImplTest {
         // Assert
         assertTrue(result.isEmpty());
     }
+
+    @Test
+    void getDashboardEvents_WithCustomLimit_ShouldPassLimitToCalendarService() {
+        // Arrange
+        int customLimit = 10;
+        when(calendarService.getUpcomingEvents(customLimit)).thenReturn(Collections.emptyList());
+
+        // Act
+        dashboardService.getDashboardEvents(customLimit);
+
+        // Assert
+        verify(calendarService).getUpcomingEvents(customLimit);
+    }
+
+    @Test
+    void getDashboardEvents_ShouldHandlePartialWeatherFailure() {
+        // Arrange
+        Location location = new Location("City", "Country", 10.0, 20.0);
+        ZonedDateTime now = ZonedDateTime.now();
+        CalendarEvent event = new CalendarEvent("1", "Summary", "Desc", now, now.plusHours(1), location, "1");
+        WeatherForecast forecast = new WeatherForecast(now.toLocalDate(), 10.0, 20.0, "Sunny", 0.0, 10.0, 1);
+
+        when(calendarService.getUpcomingEvents(anyInt())).thenReturn(Collections.singletonList(event));
+        when(weatherService.getForecastForDate(any(Location.class), any(LocalDate.class))).thenReturn(forecast);
+        when(weatherService.getForecastForTime(any(Location.class), any(ZonedDateTime.class))).thenThrow(new RuntimeException("Partial API Error"));
+
+        // Act
+        List<DashboardEvent> result = dashboardService.getDashboardEvents();
+
+        // Assert
+        assertEquals(1, result.size());
+        assertEquals(event, result.get(0).getCalendarEvent());
+        // forecast should be present because the first call succeeded
+        assertEquals(forecast, result.get(0).getWeatherForecast());
+        // eventWeather should be null because the second call failed
+        assertNull(result.get(0).getEventWeather());
+    }
 }
